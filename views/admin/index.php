@@ -1,5 +1,5 @@
-<h1 class="nombre-pagina">Panel de Administración</h1>
-<p class="descripcion-pagina">.</p>
+<h1 class="nombre-pagina">Administración</h1>
+<p class="descripcion-pagina">Panel de Administración</p>
 
 <?php include_once __DIR__ . '/../templates/barra.php'; ?>
 
@@ -12,7 +12,7 @@
                 type="date"
                 id="fecha"
                 name="fecha"
-                value="<?php echo date('Y-m-d'); ?>"
+                value="<?php echo $_GET['fecha'] ?? date('Y-m-d'); ?>"
             />
         </div>
     </form>
@@ -33,11 +33,16 @@
                     $idCita = $cita->id;
         ?>
                 <li>
-                    <p>ID: <span><?php echo $cita->id; ?></span></p>
+                    <p>Cliente: <span><?php echo $cita->cliente; ?></span></p>
+                    <p>Hora: <span><?php echo $cita->hora; ?></span></p>
+                    <p>Teléfono: <span><?php echo $cita->telefono; ?></span></p>
+                    
+                    <!-- <p>ID: <span><?php echo $cita->id; ?></span></p>
                     <p>Hora: <span><?php echo $cita->hora; ?></span></p>
                     <p>Cliente: <span><?php echo $cita->cliente; ?></span></p>
                     <p>Email: <span><?php echo $cita->email; ?></span></p>
-                    <p>Teléfono: <span><?php echo $cita->telefono; ?></span></p>
+                    <p>Teléfono: <span><?php echo $cita->telefono; ?></span></p> -->
+
                     <h3>Servicios</h3>
         <?php } ?>
 
