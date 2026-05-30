@@ -3,7 +3,7 @@
 /node_modules
 
 # Variables de entorno (contiene contraseñas)
-.env
+includes/.env
 
 # Archivos compilados
 /public/build
