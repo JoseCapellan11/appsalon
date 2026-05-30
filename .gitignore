@@ -1,4 +1,16 @@
-node_modules
-vendor
-.gitignore
-include/.env
+# Dependencias
+/vendor
+/node_modules
+
+# Variables de entorno (contiene contraseñas)
+.env
+
+# Archivos compilados
+/public/build
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
