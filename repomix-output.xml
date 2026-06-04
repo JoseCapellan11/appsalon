@@ -1,0 +1,3108 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.gitignore
+classes/Email.php
+composer.json
+controllers/AdminController.php
+controllers/APIController.php
+controllers/CitaController.php
+controllers/LoginController.php
+controllers/ServicioController.php
+gulpfile.js
+includes/.env
+includes/app.php
+includes/database.php
+includes/funciones.php
+models/ActiveRecord.php
+models/AdminCita.php
+models/Cita.php
+models/CitaServicio.php
+models/Servicio.php
+models/Usuario.php
+package.json
+public/build/css/app.css
+public/build/css/app.css.map
+public/build/img/1.avif
+public/build/img/1.jpg
+public/build/img/1.webp
+public/build/js/app.js
+public/build/js/buscador.js
+public/index.php
+Router.php
+src/img/1.jpg
+src/js/app.js
+src/js/buscador.js
+src/scss/app.scss
+src/scss/base/_globales.scss
+src/scss/base/_index.scss
+src/scss/base/_mixins.scss
+src/scss/base/_normalize.scss
+src/scss/base/_tipografia.scss
+src/scss/base/_variables.scss
+src/scss/componentes/_acciones.scss
+src/scss/componentes/_alertas.scss
+src/scss/componentes/_botones.scss
+src/scss/componentes/_formulario.scss
+src/scss/componentes/_index.scss
+src/scss/componentes/_paginacion.scss
+src/scss/componentes/_tabs.scss
+src/scss/layout/_admin.scss
+src/scss/layout/_cita.scss
+src/scss/layout/_index.scss
+src/scss/layout/_resumen.scss
+src/scss/layout/_servicios.scss
+src/scss/layout/_UI.scss
+views/admin/index.php
+views/auth/confirmar-cuenta.php
+views/auth/crear-cuenta.php
+views/auth/login.php
+views/auth/mensaje.php
+views/auth/olvide-password.php
+views/auth/recuperar-password.php
+views/cita/index.php
+views/layout.php
+views/servicios/actualizar.php
+views/servicios/crear.php
+views/servicios/formulario.php
+views/servicios/index.php
+views/templates/alertas.php
+views/templates/barra.php
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="composer.json">
+{
+    "name": "joseangel/app-salon",
+    "description": "Protecto PHP 8, MVC, SQL, SASS, Gulp",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "MVC\\": "./",
+            "Controllers\\": "./controllers/",
+            "Model\\": "./models/",
+            "Classes\\": "./classes/"
+        }
+    },
+    "authors": [
+        {
+            "name": "JoseCapellan11",
+            "email": "jose.a.capellan.h@gmail.com"
+        }
+    ],
+    "require": {
+        "phpmailer/phpmailer": "^7.1",
+        "vlucas/phpdotenv": "^5.6"
+    }
+}
+</file>
+
+<file path="controllers/AdminController.php">
+<?php
+
+namespace Controllers;
+
+use Model\AdminCita;
+use MVC\Router;
+
+class AdminController {
+    public static function index(Router $router) {
+
+        isAdmin();
+
+        $fecha = $_GET['fecha'] ?? date('Y-m-d');
+        $fechas = explode('-', $fecha);
+
+        if(!checkdate($fechas[1], $fechas[2], $fechas[0])) {
+            header('Location: /404');
+            exit;
+        }
+
+        $consulta  = " SELECT citas.id, citas.hora, CONCAT(usuarios.nombre, ' ', usuarios.apellido) as cliente, ";
+        $consulta .= " usuarios.email, usuarios.telefono, servicios.nombre as servicio, servicios.precio ";
+        $consulta .= " FROM citas ";
+        $consulta .= " LEFT OUTER JOIN usuarios ON citas.usuarioId = usuarios.id ";
+        $consulta .= " LEFT OUTER JOIN citasservicios ON citasservicios.citaId = citas.id ";
+        $consulta .= " LEFT OUTER JOIN servicios ON servicios.id = citasservicios.servicioId ";
+        $consulta .= " WHERE citas.fecha = '$fecha' ";
+        // $consulta .= " WHERE fecha = '$fecha' ";
+        
+
+        $citas = AdminCita::SQL($consulta);
+
+        $router->render('admin/index', [
+            'nombre' => $_SESSION['nombre'],
+            'citas' => $citas,
+            'fecha' => $fecha
+        ]);
+    }
+}
+</file>
+
+<file path="controllers/APIController.php">
+<?php
+
+namespace Controllers;
+
+use Model\CitaServicio;
+use Model\Cita;
+use Model\Servicio;
+
+class APIController {
+    public static function index() {
+        $servicios = Servicio::all();
+        echo json_encode($servicios);
+    }
+
+    public static function guardar() {
+        $cita = new Cita($_POST);
+        $resultado = $cita->guardar();
+
+        $id = $resultado['id']; // ← verificar que esto tenga valor
+
+        if(!$id) {
+            echo json_encode(['resultado' => false]);
+            return;
+        }
+
+        $idServicios = explode(',', $_POST['servicios']);
+
+        foreach($idServicios as $idServicio) {
+            $idServicio = trim($idServicio); // ← limpiar espacios
+            $args = [
+                'citaId' => $id,
+                'servicioId' => $idServicio
+            ];
+            $citaServicio = new CitaServicio($args);
+            $citaServicio->guardar();
+        }
+
+        echo json_encode(['resultado' => (bool) $id]);
+    }
+
+    public static function eliminar() {
+        if($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = $_POST['id'];
+            $cita = Cita::find($id);
+            $cita->eliminar();
+            header('Location: ' . $_SERVER['HTTP_REFERER']);
+        }
+    }
+}
+</file>
+
+<file path="controllers/CitaController.php">
+<?php
+
+namespace Controllers;
+
+use MVC\Router;
+
+class CitaController {
+
+    public static function index(Router $router) { 
+
+        isAuth();
+
+        $router->render('cita/index', [
+            'nombre' => $_SESSION['nombre'],
+            'id' => $_SESSION['id']
+        ]);
+    }
+}
+</file>
+
+<file path="controllers/LoginController.php">
+<?php
+
+namespace Controllers;
+
+use Classes\Email;
+use Model\Usuario;
+use MVC\Router;
+
+class LoginController {
+
+    public static function login(Router $router) {
+        $alertas = [];
+
+        if($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $auth = new Usuario($_POST);
+
+            $alertas = $auth->validarLogin();
+
+            if(empty($alertas)) {
+                // Comprobar que exista el usuario
+                $usuario = Usuario::where('email', $auth->email);
+
+                if($usuario) {
+                    // Verificar el password
+                    if($usuario->comprobarPasswordAndVerificado($auth->password)) {
+
+                        $_SESSION['id'] = $usuario->id;
+                        $_SESSION['nombre'] = $usuario->nombre . " " . $usuario->apellido;
+                        $_SESSION['email'] = $usuario->email;
+                        $_SESSION['login'] = true;
+
+                        // Redireccionar
+                        if($usuario->admin === "1") {
+                            $_SESSION['admin'] = $usuario->admin ?? null;
+
+                            header('Location: /admin');
+                            exit;
+                        } else {
+                            header('Location: /cita');
+                            exit;
+                        }
+                    }
+                } else {
+                    Usuario::setAlerta('error', 'El Usuario no existe');
+                }
+            }
+        }
+
+        $alertas = Usuario::getAlertas();
+
+        $router->render('auth/login', [
+            'alertas' => $alertas
+        ]);
+    }
+
+    public static function logout(Router $router) {
+        session_start();
+
+        $_SESSION = [];
+
+        header('Location: /');
+        exit;
+    }
+
+    public static function olvide(Router $router) {
+
+        $alertas = [];
+
+        if($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $auth = new Usuario($_POST);
+            $alertas = $auth->validarEmail();
+
+            if(empty($alertas)) {
+                $usuario = Usuario::where('email', $auth->email);
+
+                if($usuario && $usuario->confirmado === "1") {
+                    // Generar un nuevo token
+                    $usuario->crearToken();
+                    $usuario->guardar();
+
+                    // Enviar el email
+                    $email = new Email($usuario->email, $usuario->nombre, $usuario->token);
+                    $email->enviarInstrucciones();
+
+                    // Alerta de exito
+                    Usuario::setAlerta('exito', 'Hemos enviado las instrucciones a tu email');
+                } else {
+                    Usuario::setAlerta('error', 'El Usuario no existe o no está confirmado');
+                }
+            }
+        }
+
+        $alertas = Usuario::getAlertas();
+
+        $router->render('auth/olvide-password', [
+            'alertas' => $alertas
+        ]);
+    }
+
+    public static function recuperar(Router $router) {
+
+        $alertas = [];
+        $error = false;
+
+        $token = s($_GET['token']);
+
+        // Buscar usuario por su token
+        $usuario = Usuario::where('token', $token);
+
+        if(empty($usuario)) {
+            Usuario::setAlerta('error', 'Token no válido');
+            $error = true;
+        }
+
+        if($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Leer el nuevo password y guardarlo
+            $password = new Usuario($_POST);
+            $alertas = $password->validarPassword();
+
+            if(empty($alertas)) {
+                $usuario->password = null;
+                $usuario->password = $password->password;
+                $usuario->hashPassword();
+                $usuario->token = null;
+                $resultado = $usuario->guardar();
+
+                if($resultado) {
+                    header('Location: /');
+                    exit;
+                }
+            }
+        }
+
+        $alertas = Usuario::getAlertas();
+        $router->render('auth/recuperar-password', [
+            'alertas' => $alertas,
+            'error' => $error
+        ]);
+    }
+
+    public static function crear(Router $router) {
+        $usuario = new Usuario($_POST);
+
+        $alertas = [];
+
+        if($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+            $usuario->sincronizar($_POST);
+            $alertas = $usuario->validarNuevaCuenta();
+
+            if(empty($alertas)) {
+                $resultado = $usuario->existeUsuario();
+
+                if($resultado->num_rows) {
+                    $alertas = Usuario::getAlertas();
+                } else {
+                    // Hashear el password
+                    $usuario->hashPassword();
+
+                    // Generar un token único
+                    $usuario->crearToken();
+
+                    // Enviar el email de confirmación
+                    $email = new Email($usuario->email, $usuario->nombre, $usuario->token);
+                    $email->enviarConfirmacion();
+
+                    // Crear el usuario
+                    $resultado = $usuario->guardar();
+
+                    if($resultado) {
+                        header('Location: /mensaje');
+                        exit;
+                    }
+                }
+            }
+        }
+        
+        $router->render('auth/crear-cuenta', [
+            'usuario' => $usuario,
+            'alertas' => $alertas
+        ]);
+    }
+
+    public static function mensaje(Router $router) {
+
+        $router->render('auth/mensaje');
+
+    }
+
+    public static function confirmar(Router $router) {
+        $alertas = [];
+        $token = s($_GET['token']);
+        $usuario = Usuario::where('token', $token);
+
+        if(empty($usuario)) {
+            // Mostrar mensaje de error
+            Usuario::setAlerta('error', 'Token no válido');
+        } else {
+            // Modificar a usuario confirmado
+            $usuario->confirmado = "1";
+            $usuario->token = "";
+            $usuario->guardar();
+            Usuario::setAlerta('exito', 'Cuenta confirmada correctamente');
+        }
+
+        // Obtener alertas
+        $alertas = Usuario::getAlertas();
+
+        // Renderizar la vista
+        $router->render('auth/confirmar-cuenta', [
+            'alertas' => $alertas,
+            'token' => $token,
+            'usuario' => $usuario
+        ]);
+    }
+}
+</file>
+
+<file path="controllers/ServicioController.php">
+<?php
+namespace Controllers;
+
+use Model\Servicio;
+use MVC\Router;
+
+class ServicioController {
+    public static function index (Router $router) {
+
+        isAdmin();
+
+        $servicios = Servicio::all();
+
+        $router->render('servicios/index', [
+            'nombre' => $_SESSION['nombre'],
+            'servicios' => $servicios
+        ]);
+    }
+
+    public static function crear (Router $router) {
+
+        isAdmin();
+
+        $servicio = new Servicio();
+        $alertas = [];
+
+        if($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $servicio->sincronizar($_POST);
+
+            $alertas = $servicio->validar();
+
+            if(empty($alertas)) {
+                $servicio->guardar();
+                header('location: /servicios');
+            }
+        }
+
+        $router->render('servicios/crear', [
+            'nombre' => $_SESSION['nombre'],
+            'servicio' => $servicio,
+            'alertas' => $alertas
+        ]);
+    }
+
+    public static function actualizar (Router $router) {
+
+        isAdmin();
+
+        if(!is_numeric($_GET['id'])) return;
+
+        $servicio = Servicio::find($_GET['id']);
+        $alertas = [];
+
+        if($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $servicio->sincronizar($_POST);
+
+            $alertas = $servicio->validar();
+
+            if(empty($alertas)) {
+                $servicio->guardar();
+                header('location: /servicios');
+            }
+        }
+
+        $router->render('servicios/actualizar', [
+            'nombre' => $_SESSION['nombre'],
+            'servicio' => $servicio,
+            'alertas' => $alertas
+        ]);
+    }
+
+    public static function eliminar () {
+
+        isAdmin();
+
+        if($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = $_POST['id'];
+            $servicio = Servicio::find($id);
+            $servicio->eliminar();
+            header('location: /servicios');
+        }
+    }
+    
+}
+</file>
+
+<file path="gulpfile.js">
+import path from 'path'
+import fs from 'fs'
+import { glob } from 'glob'
+import { src, dest, watch, series } from 'gulp'
+import * as dartSass from 'sass'
+import gulpSass from 'gulp-sass'
+import terser from 'gulp-terser'
+import sharp from 'sharp'
+
+const sass = gulpSass(dartSass)
+
+const paths = {
+    scss: 'src/scss/**/*.scss',
+    js: 'src/js/**/*.js'
+}
+
+export function css( done ) {
+    src(paths.scss, {sourcemaps: true})
+        .pipe( sass({
+            outputStyle: 'compressed'
+        }).on('error', sass.logError) )
+        .pipe( dest('./public/build/css', {sourcemaps: '.'}) );
+    done()
+}
+
+export function js( done ) {
+    src(paths.js)
+      .pipe(terser())
+      .pipe(dest('./public/build/js'))
+    done()
+}
+
+export async function imagenes(done) {
+    const srcDir = './src/img';
+    const buildDir = './public/build/img';
+    const images =  await glob('./src/img/**/*')
+
+    images.forEach(file => {
+        const relativePath = path.relative(srcDir, path.dirname(file));
+        const outputSubDir = path.join(buildDir, relativePath);
+        procesarImagenes(file, outputSubDir);
+    });
+    done();
+}
+
+function procesarImagenes(file, outputSubDir) {
+    if (!fs.existsSync(outputSubDir)) {
+        fs.mkdirSync(outputSubDir, { recursive: true })
+    }
+    const baseName = path.basename(file, path.extname(file))
+    const extName = path.extname(file)
+
+    if (extName.toLowerCase() === '.svg') {
+        // If it's an SVG file, move it to the output directory
+        const outputFile = path.join(outputSubDir, `${baseName}${extName}`);
+    fs.copyFileSync(file, outputFile);
+    } else {
+        // For other image formats, process them with sharp
+        const outputFile = path.join(outputSubDir, `${baseName}${extName}`);
+        const outputFileWebp = path.join(outputSubDir, `${baseName}.webp`);
+        const outputFileAvif = path.join(outputSubDir, `${baseName}.avif`);
+        const options = { quality: 80 };
+
+        sharp(file).jpeg(options).toFile(outputFile);
+        sharp(file).webp(options).toFile(outputFileWebp);
+        sharp(file).avif().toFile(outputFileAvif);
+    }
+}
+
+export function dev() {
+    watch( paths.scss, css );
+    watch( paths.js, js );
+    watch('src/img/**/*.{png,jpg}', imagenes)
+}
+
+export const build = series(js, css, imagenes)
+
+export default series(js, css, imagenes, dev)
+</file>
+
+<file path="includes/app.php">
+<?php
+
+use Model\ActiveRecord;
+
+require __DIR__ . '/../vendor/autoload.php';
+
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+$dotenv->load();
+
+require 'funciones.php';
+require 'database.php';
+
+// Conectarnos a la base de datos
+ActiveRecord::setDB($db);
+</file>
+
+<file path="includes/database.php">
+<?php
+
+$db = mysqli_connect(
+    $_ENV['DB_HOST'],
+    $_ENV['DB_USER'],
+    $_ENV['DB_PASS'],
+    $_ENV['DB_NAME']
+);
+
+$db->set_charset('utf8');
+
+if (!$db) {
+    echo "Error: No se pudo conectar a MySQL.";
+    echo "errno de depuración: " . mysqli_connect_errno();
+    echo "error de depuración: " . mysqli_connect_error();
+    exit;
+}
+</file>
+
+<file path="includes/funciones.php">
+<?php
+
+function debuguear($variable) : string {
+    echo "<pre>";
+    var_dump($variable);
+    echo "</pre>";
+    exit;
+}
+
+// Escapa / Sanitizar el HTML
+function s($html) : string {
+    $s = htmlspecialchars($html);
+    return $s;
+}
+
+function esUltimo($actual, $proximo) : bool {
+    return $actual !== $proximo;
+}
+
+// Funcion que revisa si el usuario esta autenticado
+
+function isAuth() : void {
+    if(!isset($_SESSION['login'])) {
+        header('Location: /');
+        exit;
+    }
+}
+
+function isAdmin() : void {
+    if(!isset($_SESSION['admin'])) {
+        header('Location: /');
+        exit;
+    }
+}
+
+function calcularTotal(array $citas, $id) : float {
+    $total = 0;
+    foreach($citas as $cita) {
+        if($cita->id === $id) {
+            $total += $cita->precio;
+        }
+    }
+    return $total;
+}
+</file>
+
+<file path="models/ActiveRecord.php">
+<?php
+namespace Model;
+class ActiveRecord {
+
+    // Base DE DATOS
+    protected static $db;
+    protected static $tabla = '';
+    protected static $columnasDB = [];
+
+    // Alertas y Mensajes
+    protected static $alertas = [];
+    
+    // Definir la conexión a la BD - includes/database.php
+    public static function setDB($database) {
+        self::$db = $database;
+    }
+
+    public static function setAlerta($tipo, $mensaje) {
+        static::$alertas[$tipo][] = $mensaje;
+    }
+
+    // Validación
+    public static function getAlertas() {
+        return static::$alertas;
+    }
+
+    public function validar() {
+        static::$alertas = [];
+        return static::$alertas;
+    }
+
+    // Consulta SQL para crear un objeto en Memoria
+    public static function consultarSQL($query) {
+        // Consultar la base de datos
+        $resultado = self::$db->query($query);
+
+        // Iterar los resultados
+        $array = [];
+        while($registro = $resultado->fetch_assoc()) {
+            $array[] = static::crearObjeto($registro);
+        }
+
+        // liberar la memoria
+        $resultado->free();
+
+        // retornar los resultados
+        return $array;
+    }
+
+    // Crea el objeto en memoria que es igual al de la BD
+    protected static function crearObjeto($registro) {
+        $objeto = new static;
+
+        foreach($registro as $key => $value ) {
+            if(property_exists( $objeto, $key  )) {
+                $objeto->$key = $value;
+            }
+        }
+
+        return $objeto;
+    }
+
+    // Identificar y unir los atributos de la BD
+    public function atributos() {
+        $atributos = [];
+        foreach(static::$columnasDB as $columna) {
+            if($columna === 'id') continue;
+            $atributos[$columna] = $this->$columna;
+        }
+        return $atributos;
+    }
+
+    // Sanitizar los datos antes de guardarlos en la BD
+    public function sanitizarAtributos() {
+        $atributos = $this->atributos();
+        $sanitizado = [];
+        foreach($atributos as $key => $value ) {
+            $sanitizado[$key] = self::$db->escape_string($value);
+        }
+        return $sanitizado;
+    }
+
+    // Sincroniza BD con Objetos en memoria
+    public function sincronizar($args=[]) { 
+        foreach($args as $key => $value) {
+          if(property_exists($this, $key) && !is_null($value)) {
+            $this->$key = $value;
+          }
+        }
+    }
+
+    // Registros - CRUD
+    public function guardar() {
+        $resultado = '';
+        if(!is_null($this->id)) {
+            // actualizar
+            $resultado = $this->actualizar();
+        } else {
+            // Creando un nuevo registro
+            $resultado = $this->crear();
+        }
+        return $resultado;
+    }
+
+    // Todos los registros
+    public static function all() {
+        $query = "SELECT * FROM " . static::$tabla;
+        $resultado = self::consultarSQL($query);
+        return $resultado;
+    }
+
+    // Busca un registro por su id
+    public static function find($id) {
+        $query = "SELECT * FROM " . static::$tabla  ." WHERE id = {$id}";
+        $resultado = self::consultarSQL($query);
+        return array_shift( $resultado ) ;
+    }
+
+    // Obtener Registros con cierta cantidad
+    public static function get($limite) {
+        $query = "SELECT * FROM " . static::$tabla . " LIMIT {$limite}";
+        $resultado = self::consultarSQL($query);
+        return array_shift( $resultado ) ;
+    }
+
+    // Busca un registro por su id
+    public static function where($columna, $valor) {
+        $query = "SELECT * FROM " . static::$tabla  ." WHERE {$columna} = '{$valor}'";
+        $resultado = self::consultarSQL($query);
+        return array_shift( $resultado ) ;
+    }
+
+    // Consulta Plana de SQL (Utilizar cuando los metodos del modelo no son suficientes)
+    public static function SQL($query) {
+        $resultado = self::consultarSQL($query);
+        return $resultado;
+    }
+
+    // crea un nuevo registro
+    public function crear() {
+        $atributos = $this->sanitizarAtributos();
+
+        $query = " INSERT INTO " . static::$tabla . " ( ";
+        $query .= join(', ', array_keys($atributos));
+        $query .= " ) VALUES ('";
+        $query .= join("', '", array_values($atributos));
+        $query .= "') ";
+
+        $resultado = self::$db->query($query);
+
+        return [
+        'resultado' => $resultado,
+        'id' => self::$db->insert_id
+        ];
+    }
+
+    // Actualizar el registro
+    public function actualizar() {
+        // Sanitizar los datos
+        $atributos = $this->sanitizarAtributos();
+
+        // Iterar para ir agregando cada campo de la BD
+        $valores = [];
+        foreach($atributos as $key => $value) {
+            $valores[] = "{$key}='{$value}'";
+        }
+
+        // Consulta SQL
+        $query = "UPDATE " . static::$tabla ." SET ";
+        $query .=  join(', ', $valores );
+        $query .= " WHERE id = '" . self::$db->escape_string($this->id) . "' ";
+        $query .= " LIMIT 1 "; 
+
+        // Actualizar BD
+        $resultado = self::$db->query($query);
+        return $resultado;
+    }
+
+    // Eliminar un Registro por su ID
+    public function eliminar() {
+        $query = "DELETE FROM "  . static::$tabla . " WHERE id = " . self::$db->escape_string($this->id) . " LIMIT 1";
+        $resultado = self::$db->query($query);
+        return $resultado;
+    }
+
+}
+</file>
+
+<file path="models/AdminCita.php">
+<?php
+
+namespace Model;
+
+use Model\ActiveRecord;
+
+class AdminCita extends ActiveRecord {
+    // Base de datos
+    protected static $tabla = 'citas';
+    protected static $columnasDB = ['id', 'hora', 'cliente', 'email', 'telefono', 'servicio', 'precio'];
+
+    public $id;
+    public $hora;
+    public $cliente;
+    public $email;
+    public $telefono;
+    public $servicio;
+    public $precio;
+
+    public function __construct($args = []) {
+        $this->id = $args['id'] ?? null;
+        $this->hora = $args['hora'] ?? '';
+        $this->cliente = $args['cliente'] ?? '';
+        $this->email = $args['email'] ?? '';
+        $this->telefono = $args['telefono'] ?? '';
+        $this->servicio = $args['servicio'] ?? '';
+        $this->precio = $args['precio'] ?? '';
+    }
+}
+</file>
+
+<file path="models/Cita.php">
+<?php
+
+namespace Model;
+
+class Cita extends ActiveRecord {
+    // Base de datos
+    protected static $tabla = 'citas';
+    protected static $columnasDB = ['id', 'usuarioId', 'fecha', 'hora'];
+
+    public $id;
+    public $fecha;
+    public $hora;
+    public $usuarioId;
+
+    public function __construct($args = []) {
+        $this->id = $args['id'] ?? null;
+        $this->fecha = $args['fecha'] ?? '';
+        $this->hora = $args['hora'] ?? '';
+        $this->usuarioId = $args['usuarioId'] ?? '';
+    }
+}
+</file>
+
+<file path="models/CitaServicio.php">
+<?php
+
+namespace Model;
+
+class CitaServicio extends ActiveRecord {
+    // Base de datos
+    protected static $tabla = 'citasservicios';
+    protected static $columnasDB = ['id', 'citaId', 'servicioId'];
+
+    public $id;
+    public $citaId;
+    public $servicioId;
+
+    public function __construct($args = []) {
+        $this->id = $args['id'] ?? null;
+        $this->citaId = $args['citaId'] ?? '';
+        $this->servicioId = $args['servicioId'] ?? '';
+    }
+}
+</file>
+
+<file path="models/Servicio.php">
+<?php
+
+namespace Model;
+
+class Servicio extends ActiveRecord {
+    // Base de datos
+    protected static $tabla = 'servicios';
+    protected static $columnasDB = ['id', 'nombre', 'precio'];
+
+    public $id;
+    public $nombre;
+    public $precio;
+
+    public function __construct($args = []) {
+        
+        $this->id = $args['id'] ?? null;
+        $this->nombre = $args['nombre'] ?? '';
+        $this->precio = $args['precio'] ?? '';
+    }
+
+    public function validar() {
+        if(!$this->nombre) {
+            self::$alertas['error'][] = 'El nombre del Servicio es Obligatorio';
+        }
+
+        if(!$this->precio) {
+            self::$alertas['error'][] = 'El Precio del Servicio es Obligatorio';
+        }
+
+        if(!is_numeric($this->precio)) {
+            self::$alertas['error'][] = 'El Precio no es valido';
+        }
+
+        return self::$alertas;
+    }
+}
+</file>
+
+<file path="models/Usuario.php">
+<?php
+
+namespace Model;
+
+class Usuario extends ActiveRecord {
+    // Base de datos
+    protected static $tabla = 'usuarios';
+    protected static $columnasDB = ['id', 'nombre', 'apellido', 'email', 'password', 'telefono', 'admin', 'confirmado','token'];
+
+    public $id;
+    public $nombre;
+    public $apellido;
+    public $email;
+    public $password;
+    public $telefono;
+    public $admin;
+    public $confirmado;
+    public $token;
+
+    public function __construct($args = []) {
+        $this->id = $args['id'] ?? null;
+        $this->nombre = $args['nombre'] ?? '';
+        $this->apellido = $args['apellido'] ?? '';
+        $this->email = $args['email'] ?? '';
+        $this->password = $args['password'] ?? '';
+        $this->telefono = $args['telefono'] ?? '';
+        $this->admin = $args['admin'] ?? '0';
+        $this->confirmado = $args['confirmado'] ?? '0';
+        $this->token = $args['token'] ?? '';
+    }
+
+    // Validación para crear una cuenta
+    public function validarNuevaCuenta() {
+        if(!$this->nombre) {
+            self::$alertas['error'][] = 'El Nombre es Obligatorio';
+        }
+
+        if(!$this->apellido) {
+            self::$alertas['error'][] = 'El Apellido es Obligatorio';
+        }
+
+        if(!$this->email) {
+            self::$alertas['error'][] = 'El Email es Obligatorio';
+        }
+
+        if(!$this->password) {
+            self::$alertas['error'][] = 'El Password es Obligatorio';
+        }
+
+        if(strlen($this->password) < 6) {
+            self::$alertas['error'][] = 'El Password debe contener al menos 6 caracteres';
+        }
+
+        return self::$alertas;
+    }
+
+    // Validación para el login de usuarios
+    public function validarLogin() {
+        if(!$this->email) {
+            self::$alertas['error'][] = 'El Email es Obligatorio';
+        }
+
+        if(!$this->password) {
+            self::$alertas['error'][] = 'El Password es Obligatorio';
+        }
+
+        return self::$alertas;
+    }
+
+    public function validarEmail() {
+        if(!$this->email) {
+            self::$alertas['error'][] = 'El Email es Obligatorio';
+        }
+
+        return self::$alertas;
+    }
+
+    public function validarPassword() {
+        if(!$this->password) {
+            self::$alertas['error'][] = 'El Password es Obligatorio';
+        }
+
+        if(strlen($this->password) < 6) {
+            self::$alertas['error'][] = 'El Password debe contener al menos 6 caracteres';
+        }
+
+        return self::$alertas;
+    }
+
+    // Revisa si el usuario ya existe
+    public function existeUsuario() {
+        $query = "SELECT * FROM " . self::$tabla . " WHERE email = '" . $this->email . "' LIMIT 1";
+
+        $resultado = self::$db->query($query);
+
+        if($resultado->num_rows) {
+            self::$alertas['error'][] = 'El Usuario ya esta registrado';
+        }
+
+        return $resultado;
+    }
+
+    public function hashPassword() {
+        $this->password = password_hash($this->password, PASSWORD_BCRYPT);
+    }
+
+    public function crearToken() {
+        $this->token = uniqid();
+    }
+
+    public function comprobarPasswordAndVerificado($password) {
+        $resultado = password_verify($password, $this->password);
+
+        if(!$resultado || !$this->confirmado) {
+            self::$alertas['error'][] = 'Password Incorrecto o tu cuenta no ha sido confirmada';
+        } else {
+            return true;
+        }
+    }
+}
+</file>
+
+<file path="package.json">
+{
+  "name": "app-salon-php-mvc-sass",
+  "version": "1.0.0",
+  "description": "AppSalon - Curso Desarrollo web Completo",
+  "author": "Juan De la torre @codigoconjuan",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "gulp",
+    "build": "gulp build"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "glob": "^10.3.12",
+    "gulp": "^5.0.0",
+    "gulp-sass": "^5.1.0",
+    "gulp-terser": "^2.1.0",
+    "sass": "^1.75.0",
+    "sharp": "^0.33.3"
+  }
+}
+</file>
+
+<file path="public/build/css/app.css">
+/*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */html{line-height:1.15;-webkit-text-size-adjust:100%}body{margin:0}main{display:block}h1{font-size:2em;margin:.67em 0}hr{box-sizing:content-box;height:0;overflow:visible}pre{font-family:monospace,monospace;font-size:1em}a{background-color:rgba(0,0,0,0)}abbr[title]{border-bottom:none;text-decoration:underline;text-decoration:underline dotted}b,strong{font-weight:bolder}code,kbd,samp{font-family:monospace,monospace;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-0.25em}sup{top:-0.5em}img{border-style:none}button,input,optgroup,select,textarea{font-family:inherit;font-size:100%;line-height:1.15;margin:0}button,input{overflow:visible}button,select{text-transform:none}button,[type=button],[type=reset],[type=submit]{-webkit-appearance:button}button::-moz-focus-inner,[type=button]::-moz-focus-inner,[type=reset]::-moz-focus-inner,[type=submit]::-moz-focus-inner{border-style:none;padding:0}button:-moz-focusring,[type=button]:-moz-focusring,[type=reset]:-moz-focusring,[type=submit]:-moz-focusring{outline:1px dotted ButtonText}fieldset{padding:.35em .75em .625em}legend{box-sizing:border-box;color:inherit;display:table;max-width:100%;padding:0;white-space:normal}progress{vertical-align:baseline}textarea{overflow:auto}[type=checkbox],[type=radio]{box-sizing:border-box;padding:0}[type=number]::-webkit-inner-spin-button,[type=number]::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}[type=search]::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}details{display:block}summary{display:list-item}template{display:none}[hidden]{display:none}html{font-size:62.5%;box-sizing:border-box;height:100%}body{min-height:100%}@media(min-width: 768px){body{height:100%}}body{display:flex;flex-direction:column;background-color:#1a1b15;color:#fff;font-family:"Poppins",sans-serif;font-size:1.6rem}*,*:before,*:after{box-sizing:inherit}.contenedor{width:95%;max-width:1200px;margin:0 auto}a{text-decoration:none}img{max-width:100%}h1,h2,h3{font-family:"Poppins",sans-serif;margin:0 0 2.5rem 0;font-weight:900;color:#fff;text-align:center}h1{font-size:4rem}h2{font-size:3.6rem}h3{font-size:3rem;text-align:center}p{color:#fff;font-size:2rem}.nombre-pagina{text-align:center;margin:5rem 0;font-weight:700}.descripcion-pagina{text-align:center}@media(min-width: 768px){.contenedor-app{display:grid;grid-template-columns:repeat(2, 1fr);min-height:100vh}}.contenedor-app .imagen{height:20rem;background-image:url("../img/1.jpg");background-size:cover;background-position:center center}@media(min-width: 768px){.contenedor-app .imagen{height:auto}}.contenedor-app .app{width:95%;margin:0 auto;padding:3rem 0}@media(min-width: 768px){.contenedor-app .app{overflow:scroll}}.barra{margin:5rem 0}@media(min-width: 768px){.barra{display:flex;justify-content:space-between;align-items:center}}.barra .boton{background-color:#1a1b15;padding:1.5rem 4rem;color:#fff;margin-top:2rem;font-size:2rem;font-weight:400;display:inline-block;font-weight:700;border:none;transition-property:background-color;transition-duration:.3s;text-align:center;display:block;width:100%;margin:5rem 0}@media(min-width: 768px){.barra .boton{width:auto}}.barra .boton:hover{background-color:#000;cursor:pointer}.barra .boton{margin:0}.barra-servicios{margin-bottom:5rem}@media(min-width: 768px){.barra-servicios{display:flex;justify-content:space-between}}.barra-servicios .boton{margin:0 0 1rem 0}.seccion{padding:5rem 0;display:none}.seccion .text-center{text-align:center}.mostrar{display:block}.ocultar{display:none}.listado-servicios{display:grid;gap:2rem}@media(min-width: 768px){.listado-servicios{display:grid;gap:2rem;grid-template-columns:repeat(2, 1fr)}}.listado-servicios .servicio{background-color:#fff;padding:3rem;border-radius:1rem;transition-property:transform;transition-duration:300ms;text-align:center}.listado-servicios .servicio.seleccionado{background-color:#0da6f3}.listado-servicios .servicio.seleccionado p{color:#fff}.listado-servicios .servicio:hover{transform:scale(1.1)}.listado-servicios .servicio p{color:#1a1b15;margin:0 0 1.25rem 0}.listado-servicios .servicio .precio-servicio{color:#0da6f3;font-weight:700;font-size:3rem;margin:0}.contenido-resumen p{margin-bottom:1rem}.contenido-resumen span{color:#0da6f3;font-weight:700;font-size:2.4rem}.contenedor-servicio{padding:3rem 0;border-bottom:1px solid #e1e1e1}.contenedor-servicio:last-of-type{margin-bottom:5rem}.citas,.servicios{list-style:none;padding:0}.citas li,.servicios li{padding:1rem;border-top:1px solid #fff}.citas li p,.servicios li p{font-weight:700;color:#0da6f3}.citas li span,.servicios li span,.citas li .servicio,.servicios li .servicio{font-weight:400;color:#fff}.servicios .acciones{margin:0}.servicios .boton,.servicios .boton-eliminar{margin:0}.formulario{margin-top:5rem;width:100%}.campo{display:flex;margin-bottom:2rem;align-items:center}.campo label{flex:0 0 10rem}.campo input{flex:1;border:none;padding:1.25rem;border-radius:1rem}.campo input:disabled{background-color:hsl(70,12.5%,39.4117647059%);color:#fff;cursor:not-allowed}.boton{background-color:#0da6f3;padding:1.5rem 4rem;color:#fff;margin-top:2rem;font-size:2rem;font-weight:400;display:inline-block;font-weight:700;border:none;transition-property:background-color;transition-duration:.3s;text-align:center;display:block;width:100%;margin:5rem 0}@media(min-width: 768px){.boton{width:auto}}.boton:hover{background-color:rgb(9.6850393701,133.1692913386,195.3149606299);cursor:pointer}.boton-eliminar{background-color:#cb0000;padding:1.5rem 4rem;color:#fff;margin-top:2rem;font-size:2rem;font-weight:400;display:inline-block;font-weight:700;border:none;transition-property:background-color;transition-duration:.3s;text-align:center;display:block;width:100%;margin:5rem 0}@media(min-width: 768px){.boton-eliminar{width:auto}}.boton-eliminar:hover{background-color:#980000;cursor:pointer}.acciones{margin-top:5rem}@media(min-width: 768px){.acciones{display:flex;justify-content:space-between;align-items:center}}.acciones a{color:#fff;display:block;margin-bottom:2.5rem;text-align:center}.alerta{padding:1.25rem;color:#fff;width:100%;display:block;margin-bottom:2rem;text-align:center;font-weight:700;text-transform:uppercase}.alerta.error{background-color:#cb0000}.alerta.exito{background-color:#329f00}@media(min-width: 768px){.tabs{display:flex;gap:1rem}}.tabs button{background-color:#0da6f3;border:none;color:#fff;padding:1rem;display:block;width:100%;margin-bottom:1rem;text-transform:uppercase;font-weight:700;transition:background-color 300ms ease}.tabs button:hover{cursor:pointer;background-color:rgb(9.6850393701,133.1692913386,195.3149606299)}.tabs button.actual{background-color:#fff;color:#0da6f3}.paginacion{padding:5rem 0}@media(min-width: 480px){.paginacion{display:flex;justify-content:space-between}}.paginacion button{margin:0 0 1rem 0}.ocultar{visibility:hidden}/*# sourceMappingURL=app.css.map */
+</file>
+
+<file path="public/build/css/app.css.map">
+{"version":3,"sourceRoot":"","sources":["base/_normalize.scss","base/_globales.scss","base/_variables.scss","base/_tipografia.scss","base/_mixins.scss","layout/_UI.scss","layout/_cita.scss","layout/_servicios.scss","layout/_resumen.scss","layout/_admin.scss","componentes/_formulario.scss","componentes/_botones.scss","componentes/_acciones.scss","componentes/_alertas.scss","componentes/_tabs.scss","componentes/_paginacion.scss"],"names":[],"mappings":"AAAA,4EAUC,KACG,iBACA,8BAUF,KACE,SAOF,KACE,cAQF,GACE,cACA,eAWF,GACE,uBACA,SACA,iBAQF,IACE,gCACA,cAUF,EACE,+BAQF,YACE,mBACA,0BACA,iCAOF,SAEE,mBAQF,cAGE,gCACA,cAOF,MACE,cAQF,QAEE,cACA,cACA,kBACA,wBAGF,IACE,eAGF,IACE,WAUF,IACE,kBAWF,sCAKE,oBACA,eACA,iBACA,SAQF,aAEE,iBAQF,cAEE,oBAOF,gDAIE,0BAOF,wHAIE,kBACA,UAOF,4GAIE,8BAOF,SACE,2BAUF,OACE,sBACA,cACA,cACA,eACA,UACA,mBAOF,SACE,wBAOF,SACE,cAQF,6BAEE,sBACA,UAOF,kFAEE,YAQF,cACE,6BACA,oBAOF,yCACE,wBAQF,6BACE,0BACA,aAUF,QACE,cAOF,QACE,kBAUF,SACE,aAOF,SACE,aCxVJ,KACI,gBACA,sBACA,YAEJ,KACI,yCADJ,KAGQ,aAHR,KAKI,aACA,sBACA,iBCHI,QDIJ,MCFK,KDGL,YChBe,qBDiBf,iBAEJ,mBACI,mBAGJ,YACI,UACA,iBACA,cAEJ,EACI,qBAGJ,IACI,eEhCJ,SACI,YDFe,qBCGf,oBACA,gBACA,MDQK,KCPL,kBAGJ,GACI,eAEJ,GACI,iBAEJ,GACI,eACA,kBAEJ,EACI,MDPK,KCQL,eAGJ,eACI,kBACA,cACA,YDNG,ICSP,oBACI,kBCvBA,yBCNJ,gBAEQ,aACA,qCACA,kBAGJ,wBACI,aACA,qCACA,sBACA,kCDLJ,yBCCA,wBAMQ,aAIR,qBACI,UACA,cACA,eDdJ,yBCWA,qBAKQ,iBAKZ,OACI,cDtBA,yBCqBJ,OAIQ,aACA,8BACA,oBAGJ,cDlBA,iBFTI,QEUJ,oBACA,MFTK,KEUL,gBACA,eACA,gBACA,qBACA,gBACA,YACA,qCACA,wBACA,kBACA,cACA,WACA,cA1BA,yBC8BA,cDDI,YAEJ,oBACI,sBACA,eCHJ,cAEI,SAIR,iBACI,cH7BS,KERT,yBCoCJ,iBAIQ,aACA,+BAGJ,wBACI,kBCtDR,SACI,eACA,aAEA,sBACI,kBAIR,SACI,cAGJ,SACI,aCXJ,mBACI,aACA,SHIA,yBGNJ,mBH4CI,aACA,IGzCuB,KH0CvB,sCGvCA,6BACI,iBLGC,KKFD,aACA,mBACA,8BACA,0BACA,kBAEA,0CACI,iBLVL,QKWK,4CACI,MLPP,KKWD,mCACI,qBAGJ,+BACI,MLlBJ,QKmBI,qBAGJ,8CACI,ML1BL,QK2BK,YLdL,IKeK,eACA,SCnCR,qBACI,mBAGJ,wBACI,MNCD,oBAaA,IMZC,iBAIR,qBACI,eACA,gCAEA,kCACI,cNFK,KOfb,kBACI,gBACA,UAEA,wBACI,aACA,0BAEA,4BACI,YPWL,IOVK,MPHL,QOMC,8EAEI,YPID,IOHC,MPJH,KOYL,qBACI,SAGJ,6CAEI,SC7BR,YACI,gBACA,WAGJ,OACI,aACA,mBACA,mBAEA,aACI,eAGJ,aACI,OACA,YACA,gBACA,mBAEA,sBACI,8CACA,MRXH,KQYG,mBCvBZ,OPkBI,iBFZG,QEaH,oBACA,MFTK,KEUL,gBACA,eACA,gBACA,qBACA,gBACA,YACA,qCACA,wBACA,kBACA,cACA,WACA,cA1BA,yBONJ,OPmCQ,YAEJ,aACI,iEACA,eOnCR,gBPcI,iBFXG,QEYH,oBACA,MFTK,KEUL,gBACA,eACA,gBACA,qBACA,gBACA,YACA,qCACA,wBACA,kBACA,cACA,WACA,cA1BA,yBOFJ,gBP+BQ,YAEJ,sBACI,yBACA,eQvCR,UACI,WVaS,KERT,yBQNJ,UAGQ,aACA,8BACA,oBAGJ,YACI,MVEC,KUDD,cACA,qBACA,kBCbR,QACI,gBACA,MXUK,KWTL,WACA,cACA,mBACA,kBACA,YXaG,IWZH,yBAEA,cACI,iBXHD,QWMH,cACI,iBXND,QEFH,yBUNJ,MAGQ,aACA,UAGJ,aACI,iBZFD,QYGC,YACA,MZCC,kBYCD,cACA,WACA,mBACA,yBACA,YZGD,IYFC,uCAEA,mBACI,eACA,iEAGJ,oBACI,iBZdH,KYeG,MZpBL,QaNP,YACI,wCADJ,YAIQ,aACA,+BAGJ,mBACI,kBAIR,SACI","file":"app.css","sourcesContent":["/*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */\n\n/* Document\n   ========================================================================== */\n\n/**\n * 1. Correct the line height in all browsers.\n * 2. Prevent adjustments of font size after orientation changes in iOS.\n */\n\n html {\n    line-height: 1.15; /* 1 */\n    -webkit-text-size-adjust: 100%; /* 2 */\n  }\n  \n  /* Sections\n     ========================================================================== */\n  \n  /**\n   * Remove the margin in all browsers.\n   */\n  \n  body {\n    margin: 0;\n  }\n  \n  /**\n   * Render the `main` element consistently in IE.\n   */\n  \n  main {\n    display: block;\n  }\n  \n  /**\n   * Correct the font size and margin on `h1` elements within `section` and\n   * `article` contexts in Chrome, Firefox, and Safari.\n   */\n  \n  h1 {\n    font-size: 2em;\n    margin: 0.67em 0;\n  }\n  \n  /* Grouping content\n     ========================================================================== */\n  \n  /**\n   * 1. Add the correct box sizing in Firefox.\n   * 2. Show the overflow in Edge and IE.\n   */\n  \n  hr {\n    box-sizing: content-box; /* 1 */\n    height: 0; /* 1 */\n    overflow: visible; /* 2 */\n  }\n  \n  /**\n   * 1. Correct the inheritance and scaling of font size in all browsers.\n   * 2. Correct the odd `em` font sizing in all browsers.\n   */\n  \n  pre {\n    font-family: monospace, monospace; /* 1 */\n    font-size: 1em; /* 2 */\n  }\n  \n  /* Text-level semantics\n     ========================================================================== */\n  \n  /**\n   * Remove the gray background on active links in IE 10.\n   */\n  \n  a {\n    background-color: transparent;\n  }\n  \n  /**\n   * 1. Remove the bottom border in Chrome 57-\n   * 2. Add the correct text decoration in Chrome, Edge, IE, Opera, and Safari.\n   */\n  \n  abbr[title] {\n    border-bottom: none; /* 1 */\n    text-decoration: underline; /* 2 */\n    text-decoration: underline dotted; /* 2 */\n  }\n  \n  /**\n   * Add the correct font weight in Chrome, Edge, and Safari.\n   */\n  \n  b,\n  strong {\n    font-weight: bolder;\n  }\n  \n  /**\n   * 1. Correct the inheritance and scaling of font size in all browsers.\n   * 2. Correct the odd `em` font sizing in all browsers.\n   */\n  \n  code,\n  kbd,\n  samp {\n    font-family: monospace, monospace; /* 1 */\n    font-size: 1em; /* 2 */\n  }\n  \n  /**\n   * Add the correct font size in all browsers.\n   */\n  \n  small {\n    font-size: 80%;\n  }\n  \n  /**\n   * Prevent `sub` and `sup` elements from affecting the line height in\n   * all browsers.\n   */\n  \n  sub,\n  sup {\n    font-size: 75%;\n    line-height: 0;\n    position: relative;\n    vertical-align: baseline;\n  }\n  \n  sub {\n    bottom: -0.25em;\n  }\n  \n  sup {\n    top: -0.5em;\n  }\n  \n  /* Embedded content\n     ========================================================================== */\n  \n  /**\n   * Remove the border on images inside links in IE 10.\n   */\n  \n  img {\n    border-style: none;\n  }\n  \n  /* Forms\n     ========================================================================== */\n  \n  /**\n   * 1. Change the font styles in all browsers.\n   * 2. Remove the margin in Firefox and Safari.\n   */\n  \n  button,\n  input,\n  optgroup,\n  select,\n  textarea {\n    font-family: inherit; /* 1 */\n    font-size: 100%; /* 1 */\n    line-height: 1.15; /* 1 */\n    margin: 0; /* 2 */\n  }\n  \n  /**\n   * Show the overflow in IE.\n   * 1. Show the overflow in Edge.\n   */\n  \n  button,\n  input { /* 1 */\n    overflow: visible;\n  }\n  \n  /**\n   * Remove the inheritance of text transform in Edge, Firefox, and IE.\n   * 1. Remove the inheritance of text transform in Firefox.\n   */\n  \n  button,\n  select { /* 1 */\n    text-transform: none;\n  }\n  \n  /**\n   * Correct the inability to style clickable types in iOS and Safari.\n   */\n  \n  button,\n  [type=\"button\"],\n  [type=\"reset\"],\n  [type=\"submit\"] {\n    -webkit-appearance: button;\n  }\n  \n  /**\n   * Remove the inner border and padding in Firefox.\n   */\n  \n  button::-moz-focus-inner,\n  [type=\"button\"]::-moz-focus-inner,\n  [type=\"reset\"]::-moz-focus-inner,\n  [type=\"submit\"]::-moz-focus-inner {\n    border-style: none;\n    padding: 0;\n  }\n  \n  /**\n   * Restore the focus styles unset by the previous rule.\n   */\n  \n  button:-moz-focusring,\n  [type=\"button\"]:-moz-focusring,\n  [type=\"reset\"]:-moz-focusring,\n  [type=\"submit\"]:-moz-focusring {\n    outline: 1px dotted ButtonText;\n  }\n  \n  /**\n   * Correct the padding in Firefox.\n   */\n  \n  fieldset {\n    padding: 0.35em 0.75em 0.625em;\n  }\n  \n  /**\n   * 1. Correct the text wrapping in Edge and IE.\n   * 2. Correct the color inheritance from `fieldset` elements in IE.\n   * 3. Remove the padding so developers are not caught out when they zero out\n   *    `fieldset` elements in all browsers.\n   */\n  \n  legend {\n    box-sizing: border-box; /* 1 */\n    color: inherit; /* 2 */\n    display: table; /* 1 */\n    max-width: 100%; /* 1 */\n    padding: 0; /* 3 */\n    white-space: normal; /* 1 */\n  }\n  \n  /**\n   * Add the correct vertical alignment in Chrome, Firefox, and Opera.\n   */\n  \n  progress {\n    vertical-align: baseline;\n  }\n  \n  /**\n   * Remove the default vertical scrollbar in IE 10+.\n   */\n  \n  textarea {\n    overflow: auto;\n  }\n  \n  /**\n   * 1. Add the correct box sizing in IE 10.\n   * 2. Remove the padding in IE 10.\n   */\n  \n  [type=\"checkbox\"],\n  [type=\"radio\"] {\n    box-sizing: border-box; /* 1 */\n    padding: 0; /* 2 */\n  }\n  \n  /**\n   * Correct the cursor style of increment and decrement buttons in Chrome.\n   */\n  \n  [type=\"number\"]::-webkit-inner-spin-button,\n  [type=\"number\"]::-webkit-outer-spin-button {\n    height: auto;\n  }\n  \n  /**\n   * 1. Correct the odd appearance in Chrome and Safari.\n   * 2. Correct the outline style in Safari.\n   */\n  \n  [type=\"search\"] {\n    -webkit-appearance: textfield; /* 1 */\n    outline-offset: -2px; /* 2 */\n  }\n  \n  /**\n   * Remove the inner padding in Chrome and Safari on macOS.\n   */\n  \n  [type=\"search\"]::-webkit-search-decoration {\n    -webkit-appearance: none;\n  }\n  \n  /**\n   * 1. Correct the inability to style clickable types in iOS and Safari.\n   * 2. Change font properties to `inherit` in Safari.\n   */\n  \n  ::-webkit-file-upload-button {\n    -webkit-appearance: button; /* 1 */\n    font: inherit; /* 2 */\n  }\n  \n  /* Interactive\n     ========================================================================== */\n  \n  /*\n   * Add the correct display in Edge, IE 10+, and Firefox.\n   */\n  \n  details {\n    display: block;\n  }\n  \n  /*\n   * Add the correct display in all browsers.\n   */\n  \n  summary {\n    display: list-item;\n  }\n  \n  /* Misc\n     ========================================================================== */\n  \n  /**\n   * Add the correct display in IE 10+.\n   */\n  \n  template {\n    display: none;\n  }\n  \n  /**\n   * Add the correct display in IE 10.\n   */\n  \n  [hidden] {\n    display: none;\n  }\n  ","@use 'variables' as v;\n@use 'mixins' as m;\n\nhtml {\n    font-size: 62.5%;\n    box-sizing: border-box;\n    height: 100%;\n}\nbody {\n    min-height: 100%;\n    @include m.tablet {\n        height: 100%;\n    }\n    display: flex;\n    flex-direction: column;\n    background-color: v.$negro;\n    color: v.$blanco;\n    font-family: v.$fuente_principal;\n    font-size: 1.6rem;\n}\n*, *:before, *:after {\n    box-sizing: inherit;\n}\n\n.contenedor {\n    width: 95%;\n    max-width: 1200px;\n    margin: 0 auto;\n}\na {\n    text-decoration: none;\n}\n\nimg {\n    max-width: 100%;\n}\n","// Fuentes\n$fuente_principal: 'Poppins', sans-serif;\n\n// Tamaño de Media Queries\n$telefono: 480px;\n$tablet: 768px;\n$desktop: 1024px;\n\n// Colores\n$azul: #0da6f3;\n$rojo: #cb0000;\n$verde:#329f00;\n$negro: #1a1b15;\n\n$blanco: #FFFFFF;\n$gris: #e1e1e1;\n\n$separacion: 5rem;\n\n// Fuentes\n$delgada: 300;\n$regular : 400;\n$bold: 700;\n$black: 900","@use 'variables' as v;\n\nh1, h2, h3 {\n    font-family: v.$fuente_principal;\n    margin: 0 0 calc(v.$separacion / 2) 0 ;\n    font-weight: 900;\n    color: v.$blanco;\n    text-align: center;\n}\n\nh1 {\n    font-size: 4rem;\n}\nh2 {\n    font-size: 3.6rem;\n}\nh3 {\n    font-size: 3rem;\n    text-align: center;\n}\np {\n    color: v.$blanco;\n    font-size: 2rem;\n}\n\n.nombre-pagina {\n    text-align: center;\n    margin: 5rem 0;\n    font-weight: v.$bold;\n}\n\n.descripcion-pagina {\n    text-align: center;\n}","@use 'variables' as v;\n\n/** Media Queries **/\n@mixin telefono {\n    @media (min-width: v.$telefono) {\n        @content;\n    }\n}\n@mixin tablet {\n    @media (min-width: v.$tablet) {\n        @content;\n    }\n}\n@mixin desktop {\n    @media (min-width: v.$desktop) {\n        @content;\n    }\n}\n\n\n@mixin boton($bgColor, $colorTexto) {\n    background-color: $bgColor;\n    padding: 1.5rem 4rem;\n    color: $colorTexto;\n    margin-top: 2rem;\n    font-size: 2rem;\n    font-weight: 400;\n    display: inline-block;\n    font-weight: 700;\n    border: none;\n    transition-property: background-color;\n    transition-duration: .3s;\n    text-align: center;\n    display: block;\n    width: 100%;\n    margin: 5rem 0;\n\n    @include tablet {\n        width: auto;\n    }\n    &:hover {\n        background-color: darken( $bgColor, 10% );\n        cursor: pointer;\n    }\n}\n\n@mixin grid($columnas, $espaciado ) {\n    display: grid;\n    gap: $espaciado;\n    grid-template-columns: repeat($columnas, 1fr);\n}","@use 'base/variables' as v;\r\n@use 'base/mixins' as m;\r\n\r\n.contenedor-app {\r\n    @include m.tablet {\r\n        display: grid;\r\n        grid-template-columns: repeat(2, 1fr);\r\n        min-height: 100vh;\r\n    }\r\n\r\n    .imagen {\r\n        height: 20rem;\r\n        background-image: url('../img/1.jpg');\r\n        background-size: cover;\r\n        background-position: center center;\r\n        @include m.tablet {\r\n            height: auto;\r\n        }\r\n    }\r\n\r\n    .app {\r\n        width: 95%;\r\n        margin: 0 auto;\r\n        padding: 3rem 0;\r\n        @include m.tablet {\r\n            overflow: scroll;\r\n        }\r\n    }\r\n}\r\n\r\n.barra {\r\n    margin: v.$separacion 0;\r\n\r\n    @include m.tablet {\r\n        display: flex;\r\n        justify-content: space-between;\r\n        align-items: center;\r\n    }\r\n\r\n    .boton {\r\n        @include m.boton(v.$negro, v.$blanco);\r\n        margin: 0;\r\n    }\r\n}\r\n\r\n.barra-servicios {\r\n    margin-bottom: v.$separacion;\r\n\r\n    @include m.tablet {\r\n        display: flex;\r\n        justify-content: space-between;\r\n    }\r\n\r\n    .boton {\r\n        margin: 0 0 1rem 0;\r\n    }\r\n}",".seccion {\r\n    padding: 5rem 0;\r\n    display: none;\r\n\r\n    .text-center {\r\n        text-align: center;\r\n    }\r\n}\r\n\r\n.mostrar {\r\n    display: block;\r\n}\r\n\r\n.ocultar {\r\n    display: none;\r\n}","@use 'base/variables' as v;\r\n@use 'base/mixins' as m;\r\n\r\n.listado-servicios {\r\n    display: grid;\r\n    gap: 2rem;\r\n    @include m.tablet {\r\n        @include m.grid(2, 2rem);\r\n    }\r\n\r\n    .servicio {\r\n        background-color: v.$blanco;\r\n        padding: 3rem;\r\n        border-radius: 1rem;\r\n        transition-property: transform;\r\n        transition-duration: 300ms;\r\n        text-align: center;\r\n\r\n        &.seleccionado {\r\n            background-color: v.$azul;\r\n            p {\r\n                color: v.$blanco;\r\n            }\r\n        }\r\n\r\n        &:hover {\r\n            transform: scale(1.1);\r\n        }\r\n\r\n        p {\r\n            color: v.$negro;\r\n            margin: 0 0 calc(v.$separacion / 4) 0;\r\n        }\r\n\r\n        .precio-servicio {\r\n            color: v.$azul;\r\n            font-weight: v.$bold;\r\n            font-size: 3rem;\r\n            margin: 0;\r\n        }\r\n    }\r\n}","@use 'base/variables' as v;\r\n\r\n.contenido-resumen {\r\n    p {\r\n        margin-bottom: 1rem;\r\n    }\r\n\r\n    span {\r\n        color: v.$azul;\r\n        font-weight: v.$bold;\r\n        font-size: 2.4rem;\r\n    }\r\n}\r\n\r\n.contenedor-servicio {\r\n    padding: 3rem 0;\r\n    border-bottom: 1px solid v.$gris;\r\n\r\n    &:last-of-type {\r\n        margin-bottom: v.$separacion;\r\n    }\r\n}","@use 'base/variables' as v;\r\n\r\n.citas {\r\n    list-style: none;\r\n    padding: 0;\r\n\r\n    li {\r\n        padding: 1rem;\r\n        border-top: 1px solid v.$blanco;\r\n\r\n        p {\r\n            font-weight: v.$bold;\r\n            color: v.$azul;\r\n        }\r\n\r\n        span,\r\n        .servicio {\r\n            font-weight: v.$regular;\r\n            color: v.$blanco;\r\n        }\r\n    }\r\n}\r\n\r\n.servicios {\r\n    @extend .citas;\r\n\r\n    .acciones {\r\n        margin: 0;\r\n    }\r\n\r\n    .boton,\r\n    .boton-eliminar {\r\n        margin: 0;\r\n    }\r\n}","@use 'base/variables' as v;\r\n@use 'base/mixins' as m;\r\n\r\n.formulario {\r\n    margin-top: 5rem;\r\n    width: 100%;\r\n}\r\n\r\n.campo {\r\n    display: flex;\r\n    margin-bottom: 2rem;\r\n    align-items: center;\r\n\r\n    label {\r\n        flex: 0 0 10rem;\r\n    }\r\n\r\n    input {\r\n        flex: 1;\r\n        border: none;\r\n        padding: calc(v.$separacion / 4);\r\n        border-radius: 1rem;\r\n\r\n        &:disabled {\r\n            background-color: lighten(v.$negro, 30%);\r\n            color: v.$blanco;\r\n            cursor: not-allowed;\r\n        }\r\n    }\r\n}\r\n","@use 'base/variables' as v;\r\n@use 'base/mixins' as m;\r\n\r\n.boton {\r\n    @include m.boton(v.$azul, v.$blanco);\r\n}\r\n\r\n.boton-eliminar {\r\n    @include m.boton(v.$rojo, v.$blanco);\r\n}","@use 'base/variables' as v;\r\n@use 'base/mixins' as m;\r\n\r\n.acciones {\r\n    margin-top: v.$separacion;\r\n    @include m.tablet {\r\n        display: flex;\r\n        justify-content: space-between;\r\n        align-items: center;\r\n    }\r\n\r\n    a {\r\n        color: v.$blanco;\r\n        display: block;\r\n        margin-bottom: calc(v.$separacion / 2);\r\n        text-align: center;\r\n    }\r\n}","@use 'base/variables' as v;\r\n\r\n.alerta {\r\n    padding: calc(v.$separacion / 4);\r\n    color: v.$blanco;\r\n    width: 100%;\r\n    display: block;\r\n    margin-bottom: 2rem;\r\n    text-align: center;\r\n    font-weight: v.$bold;\r\n    text-transform: uppercase;\r\n\r\n    &.error {\r\n        background-color: v.$rojo;\r\n    }\r\n\r\n    &.exito {\r\n        background-color: v.$verde;\r\n    }\r\n}","@use 'base/variables' as v;\r\n@use 'base/mixins' as m;\r\n\r\n.tabs {\r\n    \r\n    @include m.tablet {\r\n        display: flex;\r\n        gap: 1rem;\r\n    }\r\n\r\n    button {\r\n        background-color: v.$azul;\r\n        border: none;\r\n        color: v.$blanco;\r\n        padding: 1rem;\r\n        display: block;\r\n        width: 100%;\r\n        margin-bottom: 1rem;\r\n        text-transform: uppercase;\r\n        font-weight: v.$bold;\r\n        transition: background-color 300ms ease;\r\n\r\n        &:hover {\r\n            cursor: pointer;\r\n            background-color: darken(v.$azul, 10%);\r\n        }\r\n\r\n        &.actual {\r\n            background-color: v.$blanco;\r\n            color: v.$azul;\r\n        }\r\n    }\r\n}","@use 'base/variables' as v;\r\n@use 'base/mixins' as m;\r\n\r\n.paginacion {\r\n    padding: v.$separacion 0;\r\n\r\n    @include m.telefono {\r\n        display: flex;\r\n        justify-content: space-between;\r\n    }\r\n\r\n    button {\r\n        margin: 0 0 1rem 0;\r\n    }\r\n}\r\n\r\n.ocultar {\r\n    visibility: hidden;\r\n}"]}
+</file>
+
+<file path="public/build/js/app.js">
+let paso=1;const pasoInicial=1,pasoFinal=3,cita={id:"",nombre:"",fecha:"",hora:"",servicios:[]};function iniciarApp(){mostrarSeccion(),tabs(),botonPaginador(),paginaSiguiente(),paginaAnterior(),consultarAPI(),idCliente(),nombreCliente(),seleccionarFecha(),seleccionarHora(),muestraResumen()}function mostrarSeccion(){const e=document.querySelector(".mostrar");e&&e.classList.remove("mostrar");const t=`#paso-${paso}`;document.querySelector(t).classList.add("mostrar");const o=document.querySelector(".actual");o&&o.classList.remove("actual");document.querySelector(`[data-paso="${paso}"]`).classList.add("actual")}function tabs(){document.querySelectorAll(".tabs button").forEach(e=>{e.addEventListener("click",e=>{paso=parseInt(e.target.dataset.paso),mostrarSeccion(),botonPaginador(),3===paso&&muestraResumen()})})}function botonPaginador(){const e=document.querySelector("#anterior"),t=document.querySelector("#siguiente");1===paso?(e.classList.add("ocultar"),t.classList.remove("ocultar")):3===paso?(t.classList.add("ocultar"),e.classList.remove("ocultar"),muestraResumen()):(e.classList.remove("ocultar"),t.classList.remove("ocultar")),mostrarSeccion()}function paginaAnterior(){document.querySelector("#anterior").addEventListener("click",function(){paso<=1||(paso--,botonPaginador())})}function paginaSiguiente(){document.querySelector("#siguiente").addEventListener("click",function(){paso>=3||(paso++,botonPaginador())})}async function consultarAPI(){try{const e="/api/servicios",t=await fetch(e);mostrarServicios(await t.json())}catch(e){console.log(e)}}function mostrarServicios(e){e.forEach(e=>{const{id:t,nombre:o,precio:n}=e,a=document.createElement("P");a.classList.add("nombre-servicio"),a.textContent=o;const c=document.createElement("P");c.classList.add("precio-servicio"),c.textContent=`$${n}`;const r=document.createElement("DIV");r.classList.add("servicio"),r.dataset.idServicio=t,r.onclick=function(){seleccionarServicio(e)},r.appendChild(a),r.appendChild(c),document.querySelector("#servicios").appendChild(r)})}function seleccionarServicio(e){const{id:t}=e,{servicios:o}=cita,n=document.querySelector(`[data-id-servicio="${t}"]`);o.some(e=>e.id===t)?(cita.servicios=o.filter(e=>e.id!==t),n.classList.remove("seleccionado")):(cita.servicios=[...o,e],n.classList.add("seleccionado")),console.log(cita)}function idCliente(){cita.id=document.querySelector("#id").value}function nombreCliente(){cita.nombre=document.querySelector("#nombre").value}function seleccionarFecha(){document.querySelector("#fecha").addEventListener("input",function(e){const t=new Date(e.target.value).getUTCDay();[0,6].includes(t)?(e.target.value="",mostrarAlerta("Fines de semana no permitidos","error",".formulario")):cita.fecha=e.target.value})}function seleccionarHora(){document.querySelector("#hora").addEventListener("input",function(e){const t=e.target.value.split(":")[0];t<10||t>18?(e.target.value="",mostrarAlerta("Hora no válida","error",".formulario")):cita.hora=e.target.value})}function mostrarAlerta(e,t,o,n=!0){const a=document.querySelector(".alerta");a&&a.remove();const c=document.createElement("DIV");c.textContent=e,c.classList.add("alerta"),c.classList.add(t);document.querySelector(o).appendChild(c),n&&setTimeout(()=>{c.remove()},3e3)}function muestraResumen(){const e=document.querySelector(".contenido-resumen");for(;e.firstChild;)e.removeChild(e.firstChild);if(Object.values(cita).includes("")||0===cita.servicios.length)return void mostrarAlerta("Faltan datos de la cita","error",".contenido-resumen",!1);const{nombre:t,fecha:o,hora:n,servicios:a}=cita,c=document.createElement("DIV");c.classList.add("servicios-resumen"),c.innerHTML='<h4 class="titulo-servicios">Servicios</h4>';const r=document.createElement("H3");r.textContent="Resumen de Servicios",e.appendChild(r),a.forEach(t=>{const{id:o,nombre:n,precio:a}=t,c=document.createElement("DIV");c.classList.add("contenedor-servicio");const r=document.createElement("P");r.textContent=n;const i=document.createElement("P");i.innerHTML=`<span>Precio:</span> $${a}`,c.appendChild(r),c.appendChild(i),e.appendChild(c)});const i=document.createElement("H3");i.textContent="Resumen de cita",e.appendChild(i);const s=document.createElement("P");s.innerHTML=`<span>Nombre:</span> ${t}`;const d=new Date(o+"T00:00:00").toLocaleDateString("es-MX",{weekday:"long",year:"numeric",month:"long",day:"numeric"}),l=document.createElement("P");l.innerHTML=`<span>Fecha:</span> ${d}`;const u=document.createElement("P");u.innerHTML=`<span>Hora:</span> ${n}`;const m=document.createElement("BUTTON");m.classList.add("boton"),m.textContent="Reservar cita",m.onclick=reservarCita,e.appendChild(s),e.appendChild(l),e.appendChild(u),e.appendChild(m)}async function reservarCita(){const{nombre:e,fecha:t,hora:o,servicios:n,id:a}=cita,c=n.map(e=>e.id),r=new FormData;r.append("fecha",t),r.append("hora",o),r.append("usuarioId",a),r.append("servicios",c);try{const e="/api/citas",t=await fetch(e,{method:"POST",body:r});(await t.json()).resultado&&Swal.fire({icon:"success",title:"Cita Creada",text:"Tu cita fue creada correctamente",confirmButtonText:"Ok"}).then(()=>{window.location.reload()})}catch(e){Swal.fire({icon:"error",title:"Error",text:"Hubo un error al crear la cita",confirmButtonText:"Ok"})}}document.addEventListener("DOMContentLoaded",function(){iniciarApp()});
+</file>
+
+<file path="public/build/js/buscador.js">
+function iniciarApp(){buscarPorFecha()}function buscarPorFecha(){document.querySelector("#fecha").addEventListener("input",function(n){const e=n.target.value;window.location=`?fecha=${e}`})}document.addEventListener("DOMContentLoaded",function(){iniciarApp()});
+</file>
+
+<file path="public/index.php">
+<?php 
+
+require_once __DIR__ . '/../includes/app.php';
+
+use Controllers\ServicioController;
+use Controllers\AdminController;
+use Controllers\APIController;
+use Controllers\LoginController;
+use Controllers\CitaController;
+use MVC\Router;
+$router = new Router();
+
+// Iniciar sesión
+$router->get('/', [LoginController::class, 'login']);
+$router->post('/', [LoginController::class, 'login']);
+$router->get('/logout', [LoginController::class, 'logout']);
+
+// Recuperar Password
+$router->get('/olvide', [LoginController::class, 'olvide']);
+$router->post('/olvide', [LoginController::class, 'olvide']);
+$router->get('/recuperar', [LoginController::class, 'recuperar']);
+$router->post('/recuperar', [LoginController::class, 'recuperar']);
+
+// Crear una nueva cuenta
+$router->get('/crear-cuenta', [LoginController::class, 'crear']);
+$router->post('/crear-cuenta', [LoginController::class, 'crear']);
+
+// Confirmar cuenta
+$router->get('/confirmar-cuenta', [LoginController::class, 'confirmar']);
+$router->get('/mensaje', [LoginController::class, 'mensaje']);
+
+// Área privada
+$router->get('/cita', [CitaController::class, 'index']);
+$router->get('/admin', [AdminController::class, 'index']);
+
+// API de servicios
+$router->get('/api/servicios', [APIController::class, 'index']);
+$router->post('/api/citas', [APIController::class, 'guardar']);
+$router->post('/api/eliminar', [APIController::class, 'eliminar']);
+
+// CRUD de servicios
+$router->get('/servicios', [ServicioController::class, 'index']);
+$router->get('/servicios/crear', [ServicioController::class, 'crear']);
+$router->post('/servicios/crear', [ServicioController::class, 'crear']);
+$router->get('/servicios/actualizar', [ServicioController::class, 'actualizar']);
+$router->post('/servicios/actualizar', [ServicioController::class, 'actualizar']);
+$router->post('/servicios/eliminar', [ServicioController::class, 'eliminar']);
+
+// Comprueba y valida las rutas, que existan y les asigna las funciones del Controlador
+$router->comprobarRutas();
+</file>
+
+<file path="Router.php">
+<?php
+
+namespace MVC;
+
+class Router
+{
+    public array $getRoutes = [];
+    public array $postRoutes = [];
+
+    public function get($url, $fn)
+    {
+        $this->getRoutes[$url] = $fn;
+    }
+
+    public function post($url, $fn)
+    {
+        $this->postRoutes[$url] = $fn;
+    }
+
+    public function comprobarRutas() {
+        
+        session_start();
+
+        $currentUrl = strtok($_SERVER['REQUEST_URI'], '?') ?? '/';
+        $method = $_SERVER['REQUEST_METHOD'];
+
+        if ($method === 'GET') {
+            $fn = $this->getRoutes[$currentUrl] ?? null;
+        } else {
+            $fn = $this->postRoutes[$currentUrl] ?? null;
+        }
+
+
+        if ( $fn ) {
+            // Call user fn va a llamar una función cuando no sabemos cual sera
+            call_user_func($fn, $this); // This es para pasar argumentos
+        } else {
+            echo "Página No Encontrada o Ruta no válida";
+        }
+    }
+
+    public function render($view, $datos = [])
+    {
+
+        // Leer lo que le pasamos  a la vista
+        foreach ($datos as $key => $value) {
+            $$key = $value;  // Doble signo de dolar significa: variable variable, básicamente nuestra variable sigue siendo la original, pero al asignarla a otra no la reescribe, mantiene su valor, de esta forma el nombre de la variable se asigna dinamicamente
+        }
+
+        ob_start(); // Almacenamiento en memoria durante un momento...
+
+        // entonces incluimos la vista en el layout
+        include_once __DIR__ . "/views/$view.php";
+        $contenido = ob_get_clean(); // Limpia el Buffer
+        include_once __DIR__ . '/views/layout.php';
+    }
+}
+</file>
+
+<file path="src/js/app.js">
+let paso = 1;
+const pasoInicial = 1;
+const pasoFinal = 3;
+
+const cita = {
+    id: '',
+    nombre: '',
+    fecha: '',
+    hora: '',
+    servicios: []
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    iniciarApp();
+});
+
+function iniciarApp() {
+    mostrarSeccion(); // Muestra y oculta las secciones
+    tabs(); // Cambia el tab al hacer click
+    botonPaginador(); // Agrega o quita los botones de paginación
+    paginaSiguiente();
+    paginaAnterior();
+
+    consultarAPI(); // Consulta la API en el backend de PHP
+
+    idCliente(); // Agrega el id del cliente al objeto de cita
+    nombreCliente(); // Agrega el nombre del cliente al objeto de cita
+    seleccionarFecha(); // Agrega la fecha de la cita al objeto de cita
+    seleccionarHora(); // Agrega la hora de la cita al objeto de cita
+
+    muestraResumen(); // Muestra el resumen de la cita
+}
+
+function mostrarSeccion() {
+    // Ocultar la sección que tenga la clase de mostrar
+    const seccionAnterior = document.querySelector('.mostrar');
+    if (seccionAnterior) {
+        seccionAnterior.classList.remove('mostrar');
+    }
+
+    // Seleccionar la sección con el paso
+    const pasoSelector = `#paso-${paso}`;
+    const seccion = document.querySelector(pasoSelector);
+    seccion.classList.add('mostrar');
+
+    // Quitar la clase actual al tab anterior
+    const tabAnterior = document.querySelector('.actual');
+    if (tabAnterior) {
+        tabAnterior.classList.remove('actual');
+    }
+
+    // Agregar la clase actual al tab actual
+    const tab = document.querySelector(`[data-paso="${paso}"]`);
+    tab.classList.add('actual');
+}
+
+function tabs() {
+    const botones = document.querySelectorAll('.tabs button');
+
+    botones.forEach(boton => {
+        boton.addEventListener('click', (e) => {
+            paso = parseInt(e.target.dataset.paso);
+            mostrarSeccion();
+
+            botonPaginador();
+
+            if(paso === pasoFinal) {
+                muestraResumen();
+            }
+        });
+    });
+}
+
+function botonPaginador() {
+    const paginaAnterior = document.querySelector('#anterior');
+    const paginaSiguiente = document.querySelector('#siguiente');
+
+    if(paso === pasoInicial) {
+        paginaAnterior.classList.add('ocultar');
+        paginaSiguiente.classList.remove('ocultar');
+    } else if (paso === pasoFinal) {
+        paginaSiguiente.classList.add('ocultar');
+        paginaAnterior.classList.remove('ocultar');
+
+        muestraResumen();
+    } else {
+        paginaAnterior.classList.remove('ocultar');
+        paginaSiguiente.classList.remove('ocultar');
+    }
+
+    mostrarSeccion();
+}
+
+function paginaAnterior() {
+    const paginaAnterior = document.querySelector('#anterior');
+    paginaAnterior.addEventListener('click', function() {
+
+        if(paso <= pasoInicial) return;
+        paso--;
+
+        botonPaginador();
+    });
+}
+
+function paginaSiguiente() {
+    const paginaSiguiente = document.querySelector('#siguiente');
+    paginaSiguiente.addEventListener('click', function() {
+
+        if(paso >= pasoFinal) return;
+        paso++;
+
+        botonPaginador();
+    });
+}
+
+ async  function consultarAPI() {
+
+    try {
+        const url = '/api/servicios';
+        const resultado = await fetch(url);
+        const servicios = await resultado.json();
+        mostrarServicios(servicios);
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+function mostrarServicios(servicios) {
+    servicios.forEach(servicio => {
+        const { id, nombre, precio } = servicio;
+
+        const nombreServicio = document.createElement('P');
+        nombreServicio.classList.add('nombre-servicio');
+        nombreServicio.textContent = nombre;
+
+        const precioServicio = document.createElement('P');
+        precioServicio.classList.add('precio-servicio');
+        precioServicio.textContent = `$${precio}`;
+
+        const servicioDiv = document.createElement('DIV');
+        servicioDiv.classList.add('servicio');
+        servicioDiv.dataset.idServicio = id;
+        servicioDiv.onclick = function() {
+            seleccionarServicio(servicio);
+        }
+
+        servicioDiv.appendChild(nombreServicio);
+        servicioDiv.appendChild(precioServicio);
+        
+        document.querySelector('#servicios').appendChild(servicioDiv);
+    });
+}
+
+function seleccionarServicio(servicio) {
+    const { id } = servicio;
+    const { servicios } = cita;
+
+    // Identificar el servicio que se dio click
+    const divServicio = document.querySelector(`[data-id-servicio="${id}"]`);
+
+    // Comprobar si el servicio ya fue agregado
+    if(servicios.some(agregado => agregado.id === id)) {
+        // Eliminar el servicio
+        cita.servicios = servicios.filter(agregado => agregado.id !== id);
+        divServicio.classList.remove('seleccionado');
+    } else {
+        // Agregar el servicio
+        cita.servicios = [...servicios, servicio];
+        divServicio.classList.add('seleccionado');
+    }
+
+    console.log(cita);
+}
+
+function idCliente() {
+    cita.id = document.querySelector('#id').value;
+}
+
+function nombreCliente() {
+    cita.nombre = document.querySelector('#nombre').value;
+}
+
+function seleccionarFecha() {
+    const inputFecha = document.querySelector('#fecha');
+    inputFecha.addEventListener('input', function(e) {
+
+        const dia = new Date(e.target.value).getUTCDay();
+
+        if([0, 6].includes(dia)) {
+            e.target.value = '';
+            mostrarAlerta('Fines de semana no permitidos', 'error', '.formulario');
+        } else {
+            cita.fecha = e.target.value;
+        }
+    });
+}
+
+function seleccionarHora() {
+    const inputHora = document.querySelector('#hora');
+    inputHora.addEventListener('input', function(e) {
+        const horaCita = e.target.value;
+        const hora = horaCita.split(':')[0];
+        if(hora < 10 || hora > 18) {
+            e.target.value = '';
+            mostrarAlerta('Hora no válida', 'error', '.formulario');
+        } else {
+            cita.hora = e.target.value;
+        }
+    });
+}
+
+function mostrarAlerta(mensaje, tipo, elemento, desaparece = true) {
+
+    // Si ya hay una alerta, no crear otra
+    const alertaPrevia = document.querySelector('.alerta');
+    if(alertaPrevia) {
+        alertaPrevia.remove();
+    }
+
+    // Crear la alerta
+    const alerta = document.createElement('DIV');
+    alerta.textContent = mensaje;
+    alerta.classList.add('alerta');
+    alerta.classList.add(tipo);
+
+    const referencia = document.querySelector(elemento);
+    referencia.appendChild(alerta);
+
+    if(desaparece) {
+        // Eliminar la alerta después de 3 segundos
+        setTimeout(() => {
+            alerta.remove();
+        }, 3000);
+    }
+}
+
+function muestraResumen() {
+    const resumen = document.querySelector('.contenido-resumen');
+
+    // Limpiar el resumen previo
+    while(resumen.firstChild) {
+        resumen.removeChild(resumen.firstChild);
+    }
+
+    if(Object.values(cita).includes('') || cita.servicios.length === 0) {
+        mostrarAlerta('Faltan datos de la cita', 'error', '.contenido-resumen', false);
+        return;
+    }
+
+    // Formatear el div de resumen
+    const { nombre, fecha, hora, servicios } = cita;
+
+    const serviciosCliente = document.createElement('DIV');
+    serviciosCliente.classList.add('servicios-resumen');
+    serviciosCliente.innerHTML = '<h4 class="titulo-servicios">Servicios</h4>';
+
+    // Heading para servicios en el resumen
+    const headingServicios = document.createElement('H3');
+    headingServicios.textContent = 'Resumen de Servicios';
+    resumen.appendChild(headingServicios);
+
+
+    // Iterando y mostrando los servicios
+    servicios.forEach(servicio => {
+        const {id, nombre, precio} = servicio;
+        const contenedorServicio = document.createElement('DIV');
+        contenedorServicio.classList.add('contenedor-servicio');
+
+        const textoServicio = document.createElement('P');
+        textoServicio.textContent = nombre;
+
+        const precioServicio = document.createElement('P');
+        precioServicio.innerHTML = `<span>Precio:</span> $${precio}`;
+
+        contenedorServicio.appendChild(textoServicio);
+        contenedorServicio.appendChild(precioServicio);
+
+        resumen.appendChild(contenedorServicio);
+    });
+
+    // Heading para servicios en el resumen
+    const headingCita = document.createElement('H3');
+    headingCita.textContent = 'Resumen de cita';
+    resumen.appendChild(headingCita);
+
+    const nombreCliente = document.createElement('P');
+    nombreCliente.innerHTML = `<span>Nombre:</span> ${nombre}`;
+
+    // Formatear la fecha en español
+    const fechaObj = new Date(fecha + 'T00:00:00');
+    const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const fechaFormateada = fechaObj.toLocaleDateString('es-MX', opciones);
+
+    const fechaCita = document.createElement('P');
+    fechaCita.innerHTML = `<span>Fecha:</span> ${fechaFormateada}`;
+
+    const horaCita = document.createElement('P');
+    horaCita.innerHTML = `<span>Hora:</span> ${hora}`;
+
+    // button para crear la cita
+    const botonReservar = document.createElement('BUTTON');
+    botonReservar.classList.add('boton');
+    botonReservar.textContent = 'Reservar cita';
+    botonReservar.onclick = reservarCita;
+
+    resumen.appendChild(nombreCliente);
+    resumen.appendChild(fechaCita);
+    resumen.appendChild(horaCita);
+
+    resumen.appendChild(botonReservar);
+}
+
+async function reservarCita() {
+    const { nombre, fecha, hora, servicios, id } = cita;
+    const idServicios = servicios.map(servicio => servicio.id);
+
+    const datos = new FormData();
+    datos.append('fecha', fecha);
+    datos.append('hora', hora);
+    datos.append('usuarioId', id);
+    datos.append('servicios', idServicios);
+
+    try {
+        const url = '/api/citas';
+        const respuesta = await fetch(url, {
+            method: 'POST',
+            body: datos
+        });
+
+        const resultado = await respuesta.json();
+
+        if(resultado.resultado) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Cita Creada',
+                text: 'Tu cita fue creada correctamente',
+                confirmButtonText: 'Ok'
+            }).then(() => {
+                window.location.reload();
+            });
+        }
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Hubo un error al crear la cita',
+            confirmButtonText: 'Ok'
+        });
+    }
+}
+</file>
+
+<file path="src/js/buscador.js">
+document.addEventListener('DOMContentLoaded', function() {
+    iniciarApp();
+});
+
+function iniciarApp() {
+    buscarPorFecha(); // ← llamar la función
+}
+
+function buscarPorFecha() {
+    const fechaInput = document.querySelector('#fecha');
+    fechaInput.addEventListener('input', function(e) {
+        const fechaSeleccionada = e.target.value;
+        window.location = `?fecha=${fechaSeleccionada}`;
+    });
+}
+</file>
+
+<file path="src/scss/app.scss">
+@use 'base';
+@use 'layout';
+@use 'componentes';
+</file>
+
+<file path="src/scss/base/_globales.scss">
+@use 'variables' as v;
+@use 'mixins' as m;
+
+html {
+    font-size: 62.5%;
+    box-sizing: border-box;
+    height: 100%;
+}
+body {
+    min-height: 100%;
+    @include m.tablet {
+        height: 100%;
+    }
+    display: flex;
+    flex-direction: column;
+    background-color: v.$negro;
+    color: v.$blanco;
+    font-family: v.$fuente_principal;
+    font-size: 1.6rem;
+}
+*, *:before, *:after {
+    box-sizing: inherit;
+}
+
+.contenedor {
+    width: 95%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+a {
+    text-decoration: none;
+}
+
+img {
+    max-width: 100%;
+}
+</file>
+
+<file path="src/scss/base/_index.scss">
+@forward 'normalize';
+@forward 'variables';
+@forward 'mixins';
+@forward 'globales';
+@forward 'tipografia';
+</file>
+
+<file path="src/scss/base/_mixins.scss">
+@use 'variables' as v;
+
+/** Media Queries **/
+@mixin telefono {
+    @media (min-width: v.$telefono) {
+        @content;
+    }
+}
+@mixin tablet {
+    @media (min-width: v.$tablet) {
+        @content;
+    }
+}
+@mixin desktop {
+    @media (min-width: v.$desktop) {
+        @content;
+    }
+}
+
+
+@mixin boton($bgColor, $colorTexto) {
+    background-color: $bgColor;
+    padding: 1.5rem 4rem;
+    color: $colorTexto;
+    margin-top: 2rem;
+    font-size: 2rem;
+    font-weight: 400;
+    display: inline-block;
+    font-weight: 700;
+    border: none;
+    transition-property: background-color;
+    transition-duration: .3s;
+    text-align: center;
+    display: block;
+    width: 100%;
+    margin: 5rem 0;
+
+    @include tablet {
+        width: auto;
+    }
+    &:hover {
+        background-color: darken( $bgColor, 10% );
+        cursor: pointer;
+    }
+}
+
+@mixin grid($columnas, $espaciado ) {
+    display: grid;
+    gap: $espaciado;
+    grid-template-columns: repeat($columnas, 1fr);
+}
+</file>
+
+<file path="src/scss/base/_normalize.scss">
+/*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */
+
+/* Document
+   ========================================================================== */
+
+/**
+ * 1. Correct the line height in all browsers.
+ * 2. Prevent adjustments of font size after orientation changes in iOS.
+ */
+
+ html {
+    line-height: 1.15; /* 1 */
+    -webkit-text-size-adjust: 100%; /* 2 */
+  }
+  
+  /* Sections
+     ========================================================================== */
+  
+  /**
+   * Remove the margin in all browsers.
+   */
+  
+  body {
+    margin: 0;
+  }
+  
+  /**
+   * Render the `main` element consistently in IE.
+   */
+  
+  main {
+    display: block;
+  }
+  
+  /**
+   * Correct the font size and margin on `h1` elements within `section` and
+   * `article` contexts in Chrome, Firefox, and Safari.
+   */
+  
+  h1 {
+    font-size: 2em;
+    margin: 0.67em 0;
+  }
+  
+  /* Grouping content
+     ========================================================================== */
+  
+  /**
+   * 1. Add the correct box sizing in Firefox.
+   * 2. Show the overflow in Edge and IE.
+   */
+  
+  hr {
+    box-sizing: content-box; /* 1 */
+    height: 0; /* 1 */
+    overflow: visible; /* 2 */
+  }
+  
+  /**
+   * 1. Correct the inheritance and scaling of font size in all browsers.
+   * 2. Correct the odd `em` font sizing in all browsers.
+   */
+  
+  pre {
+    font-family: monospace, monospace; /* 1 */
+    font-size: 1em; /* 2 */
+  }
+  
+  /* Text-level semantics
+     ========================================================================== */
+  
+  /**
+   * Remove the gray background on active links in IE 10.
+   */
+  
+  a {
+    background-color: transparent;
+  }
+  
+  /**
+   * 1. Remove the bottom border in Chrome 57-
+   * 2. Add the correct text decoration in Chrome, Edge, IE, Opera, and Safari.
+   */
+  
+  abbr[title] {
+    border-bottom: none; /* 1 */
+    text-decoration: underline; /* 2 */
+    text-decoration: underline dotted; /* 2 */
+  }
+  
+  /**
+   * Add the correct font weight in Chrome, Edge, and Safari.
+   */
+  
+  b,
+  strong {
+    font-weight: bolder;
+  }
+  
+  /**
+   * 1. Correct the inheritance and scaling of font size in all browsers.
+   * 2. Correct the odd `em` font sizing in all browsers.
+   */
+  
+  code,
+  kbd,
+  samp {
+    font-family: monospace, monospace; /* 1 */
+    font-size: 1em; /* 2 */
+  }
+  
+  /**
+   * Add the correct font size in all browsers.
+   */
+  
+  small {
+    font-size: 80%;
+  }
+  
+  /**
+   * Prevent `sub` and `sup` elements from affecting the line height in
+   * all browsers.
+   */
+  
+  sub,
+  sup {
+    font-size: 75%;
+    line-height: 0;
+    position: relative;
+    vertical-align: baseline;
+  }
+  
+  sub {
+    bottom: -0.25em;
+  }
+  
+  sup {
+    top: -0.5em;
+  }
+  
+  /* Embedded content
+     ========================================================================== */
+  
+  /**
+   * Remove the border on images inside links in IE 10.
+   */
+  
+  img {
+    border-style: none;
+  }
+  
+  /* Forms
+     ========================================================================== */
+  
+  /**
+   * 1. Change the font styles in all browsers.
+   * 2. Remove the margin in Firefox and Safari.
+   */
+  
+  button,
+  input,
+  optgroup,
+  select,
+  textarea {
+    font-family: inherit; /* 1 */
+    font-size: 100%; /* 1 */
+    line-height: 1.15; /* 1 */
+    margin: 0; /* 2 */
+  }
+  
+  /**
+   * Show the overflow in IE.
+   * 1. Show the overflow in Edge.
+   */
+  
+  button,
+  input { /* 1 */
+    overflow: visible;
+  }
+  
+  /**
+   * Remove the inheritance of text transform in Edge, Firefox, and IE.
+   * 1. Remove the inheritance of text transform in Firefox.
+   */
+  
+  button,
+  select { /* 1 */
+    text-transform: none;
+  }
+  
+  /**
+   * Correct the inability to style clickable types in iOS and Safari.
+   */
+  
+  button,
+  [type="button"],
+  [type="reset"],
+  [type="submit"] {
+    -webkit-appearance: button;
+  }
+  
+  /**
+   * Remove the inner border and padding in Firefox.
+   */
+  
+  button::-moz-focus-inner,
+  [type="button"]::-moz-focus-inner,
+  [type="reset"]::-moz-focus-inner,
+  [type="submit"]::-moz-focus-inner {
+    border-style: none;
+    padding: 0;
+  }
+  
+  /**
+   * Restore the focus styles unset by the previous rule.
+   */
+  
+  button:-moz-focusring,
+  [type="button"]:-moz-focusring,
+  [type="reset"]:-moz-focusring,
+  [type="submit"]:-moz-focusring {
+    outline: 1px dotted ButtonText;
+  }
+  
+  /**
+   * Correct the padding in Firefox.
+   */
+  
+  fieldset {
+    padding: 0.35em 0.75em 0.625em;
+  }
+  
+  /**
+   * 1. Correct the text wrapping in Edge and IE.
+   * 2. Correct the color inheritance from `fieldset` elements in IE.
+   * 3. Remove the padding so developers are not caught out when they zero out
+   *    `fieldset` elements in all browsers.
+   */
+  
+  legend {
+    box-sizing: border-box; /* 1 */
+    color: inherit; /* 2 */
+    display: table; /* 1 */
+    max-width: 100%; /* 1 */
+    padding: 0; /* 3 */
+    white-space: normal; /* 1 */
+  }
+  
+  /**
+   * Add the correct vertical alignment in Chrome, Firefox, and Opera.
+   */
+  
+  progress {
+    vertical-align: baseline;
+  }
+  
+  /**
+   * Remove the default vertical scrollbar in IE 10+.
+   */
+  
+  textarea {
+    overflow: auto;
+  }
+  
+  /**
+   * 1. Add the correct box sizing in IE 10.
+   * 2. Remove the padding in IE 10.
+   */
+  
+  [type="checkbox"],
+  [type="radio"] {
+    box-sizing: border-box; /* 1 */
+    padding: 0; /* 2 */
+  }
+  
+  /**
+   * Correct the cursor style of increment and decrement buttons in Chrome.
+   */
+  
+  [type="number"]::-webkit-inner-spin-button,
+  [type="number"]::-webkit-outer-spin-button {
+    height: auto;
+  }
+  
+  /**
+   * 1. Correct the odd appearance in Chrome and Safari.
+   * 2. Correct the outline style in Safari.
+   */
+  
+  [type="search"] {
+    -webkit-appearance: textfield; /* 1 */
+    outline-offset: -2px; /* 2 */
+  }
+  
+  /**
+   * Remove the inner padding in Chrome and Safari on macOS.
+   */
+  
+  [type="search"]::-webkit-search-decoration {
+    -webkit-appearance: none;
+  }
+  
+  /**
+   * 1. Correct the inability to style clickable types in iOS and Safari.
+   * 2. Change font properties to `inherit` in Safari.
+   */
+  
+  ::-webkit-file-upload-button {
+    -webkit-appearance: button; /* 1 */
+    font: inherit; /* 2 */
+  }
+  
+  /* Interactive
+     ========================================================================== */
+  
+  /*
+   * Add the correct display in Edge, IE 10+, and Firefox.
+   */
+  
+  details {
+    display: block;
+  }
+  
+  /*
+   * Add the correct display in all browsers.
+   */
+  
+  summary {
+    display: list-item;
+  }
+  
+  /* Misc
+     ========================================================================== */
+  
+  /**
+   * Add the correct display in IE 10+.
+   */
+  
+  template {
+    display: none;
+  }
+  
+  /**
+   * Add the correct display in IE 10.
+   */
+  
+  [hidden] {
+    display: none;
+  }
+</file>
+
+<file path="src/scss/base/_tipografia.scss">
+@use 'variables' as v;
+
+h1, h2, h3 {
+    font-family: v.$fuente_principal;
+    margin: 0 0 calc(v.$separacion / 2) 0 ;
+    font-weight: 900;
+    color: v.$blanco;
+    text-align: center;
+}
+
+h1 {
+    font-size: 4rem;
+}
+h2 {
+    font-size: 3.6rem;
+}
+h3 {
+    font-size: 3rem;
+    text-align: center;
+}
+p {
+    color: v.$blanco;
+    font-size: 2rem;
+}
+
+.nombre-pagina {
+    text-align: center;
+    margin: 5rem 0;
+    font-weight: v.$bold;
+}
+
+.descripcion-pagina {
+    text-align: center;
+}
+</file>
+
+<file path="src/scss/base/_variables.scss">
+// Fuentes
+$fuente_principal: 'Poppins', sans-serif;
+
+// Tamaño de Media Queries
+$telefono: 480px;
+$tablet: 768px;
+$desktop: 1024px;
+
+// Colores
+$azul: #0da6f3;
+$rojo: #cb0000;
+$verde:#329f00;
+$negro: #1a1b15;
+
+$blanco: #FFFFFF;
+$gris: #e1e1e1;
+
+$separacion: 5rem;
+
+// Fuentes
+$delgada: 300;
+$regular : 400;
+$bold: 700;
+$black: 900
+</file>
+
+<file path="src/scss/componentes/_acciones.scss">
+@use 'base/variables' as v;
+@use 'base/mixins' as m;
+
+.acciones {
+    margin-top: v.$separacion;
+    @include m.tablet {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    a {
+        color: v.$blanco;
+        display: block;
+        margin-bottom: calc(v.$separacion / 2);
+        text-align: center;
+    }
+}
+</file>
+
+<file path="src/scss/componentes/_alertas.scss">
+@use 'base/variables' as v;
+
+.alerta {
+    padding: calc(v.$separacion / 4);
+    color: v.$blanco;
+    width: 100%;
+    display: block;
+    margin-bottom: 2rem;
+    text-align: center;
+    font-weight: v.$bold;
+    text-transform: uppercase;
+
+    &.error {
+        background-color: v.$rojo;
+    }
+
+    &.exito {
+        background-color: v.$verde;
+    }
+}
+</file>
+
+<file path="src/scss/componentes/_botones.scss">
+@use 'base/variables' as v;
+@use 'base/mixins' as m;
+
+.boton {
+    @include m.boton(v.$azul, v.$blanco);
+}
+
+.boton-eliminar {
+    @include m.boton(v.$rojo, v.$blanco);
+}
+</file>
+
+<file path="src/scss/componentes/_formulario.scss">
+@use 'base/variables' as v;
+@use 'base/mixins' as m;
+
+.formulario {
+    margin-top: 5rem;
+    width: 100%;
+}
+
+.campo {
+    display: flex;
+    margin-bottom: 2rem;
+    align-items: center;
+
+    label {
+        flex: 0 0 10rem;
+    }
+
+    input {
+        flex: 1;
+        border: none;
+        padding: calc(v.$separacion / 4);
+        border-radius: 1rem;
+
+        &:disabled {
+            background-color: lighten(v.$negro, 30%);
+            color: v.$blanco;
+            cursor: not-allowed;
+        }
+    }
+}
+</file>
+
+<file path="src/scss/componentes/_index.scss">
+@forward 'formulario';
+@forward 'botones';
+@forward 'acciones';
+@forward 'alertas';
+@forward 'tabs';
+@forward 'paginacion';
+</file>
+
+<file path="src/scss/componentes/_paginacion.scss">
+@use 'base/variables' as v;
+@use 'base/mixins' as m;
+
+.paginacion {
+    padding: v.$separacion 0;
+
+    @include m.telefono {
+        display: flex;
+        justify-content: space-between;
+    }
+
+    button {
+        margin: 0 0 1rem 0;
+    }
+}
+
+.ocultar {
+    visibility: hidden;
+}
+</file>
+
+<file path="src/scss/componentes/_tabs.scss">
+@use 'base/variables' as v;
+@use 'base/mixins' as m;
+
+.tabs {
+    
+    @include m.tablet {
+        display: flex;
+        gap: 1rem;
+    }
+
+    button {
+        background-color: v.$azul;
+        border: none;
+        color: v.$blanco;
+        padding: 1rem;
+        display: block;
+        width: 100%;
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+        font-weight: v.$bold;
+        transition: background-color 300ms ease;
+
+        &:hover {
+            cursor: pointer;
+            background-color: darken(v.$azul, 10%);
+        }
+
+        &.actual {
+            background-color: v.$blanco;
+            color: v.$azul;
+        }
+    }
+}
+</file>
+
+<file path="src/scss/layout/_admin.scss">
+@use 'base/variables' as v;
+
+.citas {
+    list-style: none;
+    padding: 0;
+
+    li {
+        padding: 1rem;
+        border-top: 1px solid v.$blanco;
+
+        p {
+            font-weight: v.$bold;
+            color: v.$azul;
+        }
+
+        span,
+        .servicio {
+            font-weight: v.$regular;
+            color: v.$blanco;
+        }
+    }
+}
+
+.servicios {
+    @extend .citas;
+
+    .acciones {
+        margin: 0;
+    }
+
+    .boton,
+    .boton-eliminar {
+        margin: 0;
+    }
+}
+</file>
+
+<file path="src/scss/layout/_cita.scss">
+.seccion {
+    padding: 5rem 0;
+    display: none;
+
+    .text-center {
+        text-align: center;
+    }
+}
+
+.mostrar {
+    display: block;
+}
+
+.ocultar {
+    display: none;
+}
+</file>
+
+<file path="src/scss/layout/_index.scss">
+@forward 'UI';
+@forward 'cita';
+@forward 'servicios';
+@forward 'resumen';
+@forward 'admin';
+</file>
+
+<file path="src/scss/layout/_resumen.scss">
+@use 'base/variables' as v;
+
+.contenido-resumen {
+    p {
+        margin-bottom: 1rem;
+    }
+
+    span {
+        color: v.$azul;
+        font-weight: v.$bold;
+        font-size: 2.4rem;
+    }
+}
+
+.contenedor-servicio {
+    padding: 3rem 0;
+    border-bottom: 1px solid v.$gris;
+
+    &:last-of-type {
+        margin-bottom: v.$separacion;
+    }
+}
+</file>
+
+<file path="src/scss/layout/_servicios.scss">
+@use 'base/variables' as v;
+@use 'base/mixins' as m;
+
+.listado-servicios {
+    display: grid;
+    gap: 2rem;
+    @include m.tablet {
+        @include m.grid(2, 2rem);
+    }
+
+    .servicio {
+        background-color: v.$blanco;
+        padding: 3rem;
+        border-radius: 1rem;
+        transition-property: transform;
+        transition-duration: 300ms;
+        text-align: center;
+
+        &.seleccionado {
+            background-color: v.$azul;
+            p {
+                color: v.$blanco;
+            }
+        }
+
+        &:hover {
+            transform: scale(1.1);
+        }
+
+        p {
+            color: v.$negro;
+            margin: 0 0 calc(v.$separacion / 4) 0;
+        }
+
+        .precio-servicio {
+            color: v.$azul;
+            font-weight: v.$bold;
+            font-size: 3rem;
+            margin: 0;
+        }
+    }
+}
+</file>
+
+<file path="src/scss/layout/_UI.scss">
+@use 'base/variables' as v;
+@use 'base/mixins' as m;
+
+.contenedor-app {
+    @include m.tablet {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        min-height: 100vh;
+    }
+
+    .imagen {
+        height: 20rem;
+        background-image: url('../img/1.jpg');
+        background-size: cover;
+        background-position: center center;
+        @include m.tablet {
+            height: auto;
+        }
+    }
+
+    .app {
+        width: 95%;
+        margin: 0 auto;
+        padding: 3rem 0;
+        @include m.tablet {
+            overflow: scroll;
+        }
+    }
+}
+
+.barra {
+    margin: v.$separacion 0;
+
+    @include m.tablet {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .boton {
+        @include m.boton(v.$negro, v.$blanco);
+        margin: 0;
+    }
+}
+
+.barra-servicios {
+    margin-bottom: v.$separacion;
+
+    @include m.tablet {
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .boton {
+        margin: 0 0 1rem 0;
+    }
+}
+</file>
+
+<file path="views/auth/confirmar-cuenta.php">
+<h1 class="nombre-pagina">Confirmar Cuenta</h1>
+
+<?php include_once __DIR__ . '/../templates/alertas.php'; ?>
+
+<div class="acciones">
+    <a href="/">Iniciar Sesión</a>
+</div>
+</file>
+
+<file path="views/auth/crear-cuenta.php">
+<h1 class="nombre-pagina">Crear Cuenta</h1>
+<p class="descripcion-pagina">Llena el formulario para crear una cuenta</p>
+
+<?php include_once __DIR__ . "/../templates/alertas.php"; ?>
+
+<form class="formulario" method="POST" action="/crear-cuenta">
+
+    <div class="campo">
+        <label for="nombre">Nombre</label>
+        <input
+            type="text"
+            id="nombre"
+            name="nombre"
+            placeholder="Tu Nombre"
+            value="<?php echo s($usuario->nombre); ?>"
+        />
+    </div>
+
+    <div class="campo">
+        <label for="apellido">Apellido</label>
+        <input
+            type="text"
+            id="apellido"
+            placeholder="Tu Apellido"
+            name="apellido"
+            value="<?php echo s($usuario->apellido); ?>"
+        />
+    </div>
+
+    <div class="campo">
+        <label for="telefono">Teléfono</label>
+        <input
+            type="tel"
+            id="telefono"
+            name="telefono"
+            placeholder="Tu Teléfono"
+            value="<?php echo s($usuario->telefono); ?>"
+        />
+    </div>
+
+    <div class="campo">
+        <label for="email">Email</label>
+        <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="Tu Email"
+            value="<?php echo s($usuario->email); ?>"
+        />
+    </div>
+
+    <div class="campo">
+        <label for="password">Password</label>
+            <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Tu Password"
+        />
+    </div>
+
+    <input type="submit" value="Crear Cuenta" class="boton">
+</form>
+
+<div class="acciones">
+    <a href="/">¿Ya tienes una cuenta? Iniciar Sesión</a>
+    <a href="/olvide">¿Olvidaste tu password?</a>
+</div>
+</file>
+
+<file path="views/auth/login.php">
+<h1 class="nombre-pagina">Login</h1>
+<p class="descripcion-pagina">Inicia sesión para acceder a tu cuenta</p>
+
+<?php include_once __DIR__ . "/../templates/alertas.php"; ?>
+
+<form class="formulario" method="POST" action="/">
+    <div class="campo">
+        <label for="email">Email</label>
+        <input
+            type="email"
+            id="email"
+            placeholder="Tu Email"
+            name="email"
+        />
+    </div>
+
+    <div class="campo">
+        <label for="password">Password</label>
+            <input
+            type="password"
+            id="password"
+            placeholder="Tu Password"
+            name="password"
+        />
+    </div>
+
+    <input type="submit" class="boton" value="Iniciar Sesión">
+</form>
+
+<div class="acciones">
+    <a href="/crear-cuenta">¿Aún no tienes una cuenta? Crear una</a>
+    <a href="/olvide">¿Olvidaste tu password?</a>
+</div>
+</file>
+
+<file path="views/auth/mensaje.php">
+<h1 class="nombre-pagina">Confirmar Cuenta</h1>
+
+<p class="descripcion-pagina">Hemos enviado las instrucciones para confirmar tu cuenta a tu email</p>
+</file>
+
+<file path="views/auth/olvide-password.php">
+<h1 class="nombre-pagina">Olvide Password</h1>
+<p class="descripcion-pagina">Reestablece tu password escribiendo tu email a continuación</p>
+
+<?php include_once __DIR__ . "/../templates/alertas.php"; ?>
+
+<form class="formulario" action="/olvide" method="POST">
+    <div class="campo">
+        <label for="email">Email</label>
+        <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="Tu Email"
+        />
+    </div>
+
+    <input type="submit" class="boton" value="Enviar Instrucciones">
+</form>
+
+<div class="acciones">
+    <a href="/">¿Ya tienes una cuenta? Iniciar Sesión</a>
+    <a href="/crear-cuenta">¿Aún no tienes una cuenta? Crear una</a>
+</div>
+</file>
+
+<file path="views/auth/recuperar-password.php">
+<h1 class="nombre-pagina">Recuperar Password</h1>
+<p class="descripcion-pagina">Coloca tu nuevo password a continuación</p>
+
+<?php include_once __DIR__ . '/../templates/alertas.php'; ?>
+
+<?php if($error) return; ?>
+<form class="formulario" method="POST">
+    <div class="campo">
+        <label for="password">Nuevo Password</label>
+        <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Tu Nuevo Password"
+        />
+    </div>
+
+    <input type="submit" class="boton" value="Guardar Nuevo Password">
+</form>
+
+<div class="acciones">
+    <a href="/">¿Ya tienes una cuenta? Inicia Sesión</a>
+    <a href="/crear-cuenta">¿Aún no tienes una cuenta? Crear una</a>
+</div>
+</file>
+
+<file path="views/cita/index.php">
+<h1 class="nombre-pagina">Crear Nueva Cita</h1>
+<p class="descripcion-pagina">ELige tus servicios y coloca tus datos</p>
+
+<?php include_once __DIR__ . '/../templates/barra.php'; ?>
+
+<div id="app">
+    <nav class="tabs">
+        <button class="actual" type="button" data-paso="1">Servicios</button>
+        <button type="button" data-paso="2">Información Cita</button>
+        <button type="button" data-paso="3">Resumen</button>
+    </nav>
+
+    <div id="paso-1" class="seccion">
+        <h2>Servicios</h2>
+        <p class="text-center">Elige tus servicios a continuación</p>
+        <div id="servicios" class="listado-servicios"></div>
+    </div>
+
+    <div id="paso-2" class="seccion">
+        <h2>Tus Datos y Cita</h2>
+        <p class="text-center">Coloca tus datos y fecha de tu cita</p>
+
+        <form class="formulario">
+            <div class="campo">
+                <label for="nombre">Nombre</label>
+                <input 
+                    id="nombre"
+                    type="text"
+                    placeholder="Tu Nombre"
+                    value="<?php echo $nombre; ?>"
+                    disabled
+                />
+            </div>
+
+            <div class="campo">
+                <label for="fecha">Fecha</label>
+                <input 
+                    id="fecha"
+                    type="date"
+                    min="<?php echo date('Y-m-d', strtotime('+1 day')); ?>"
+                />
+            </div>
+
+            <div class="campo">
+                <label for="hora">Hora</label>
+                <input 
+                    id="hora"
+                    type="time"
+                />
+            </div>
+            <input type="hidden" id="id" value="<?php echo $id; ?>">
+        </form>
+    </div>
+
+    <div id="paso-3" class="seccion contenido-resumen">
+        <h2>Resumen de Cita</h2>
+        <p class="text-center">Verifica que la información sea correcta</p>
+    </div>
+
+    <div class="paginacion">
+        <button id="anterior" class="boton">&laquo; Anterior</button>
+        <button id="siguiente" class="boton">Siguiente &raquo;</button>
+    </div>
+</div>
+
+<?php 
+    $script = "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+        <script src='build/js/app.js'></script>
+    ";
+?>
+</file>
+
+<file path="views/servicios/actualizar.php">
+<h1 class="nombre-pagina">Actualizar Servicios</h1>
+<p class="descripcion-pagina">Modifica los valores del formulario</p>
+
+<?php 
+    include_once __DIR__ . '/../templates/barra.php';
+    include_once __DIR__ . '/../templates/alertas.php';
+?>
+
+<form method="POST" class="formulario">
+    <?php include_once __DIR__ . '/formulario.php'; ?>
+    <input type="submit" class="boton" value="Actualizar Servicio">
+</form>
+</file>
+
+<file path="views/servicios/crear.php">
+<h1 class="nombre-pagina">Nuevo Servicio</h1>
+<p class="descripcion-pagina">Llena todos los campos para agregar un nuevo servicio</p>
+
+<?php 
+    include_once __DIR__ . '/../templates/barra.php';
+    include_once __DIR__ . '/../templates/alertas.php';
+?>
+
+<form action="/servicios/crear" method="POST" class="formulario">
+    <?php include_once __DIR__ . '/formulario.php'; ?>
+    <input type="submit" class="boton" value="Guardar Servicio">
+</form>
+</file>
+
+<file path="views/servicios/formulario.php">
+<div class="campo">
+    <label for="nombre">Nombre</label>
+    <input
+        type="text"
+        id="nombre"
+        placeholder="Nombre del Servicio"
+        name="nombre"
+        value="<?php echo $servicio->nombre ?>"
+    />
+</div>
+
+<div class="campo">
+    <label for="precio">Precio</label>
+    <input
+        type="number"
+        id="precio"
+        placeholder="precio del Servicio"
+        name="precio"
+        value="<?php echo $servicio->precio ?>"
+    />
+</div>
+</file>
+
+<file path="views/servicios/index.php">
+<h1 class="nombre-pagina">Servicios</h1>
+<p class="descripcion-pagina">Administracion de Servicios</p>
+
+<?php include_once __DIR__ . '/../templates/barra.php'; ?>
+
+<ul class="servicios">
+    <?php foreach($servicios as $servicio) {?>
+        <li>
+            <p>Nombre: <span><?php echo $servicio->nombre; ?></span></p>
+            <p>Precio: <span>$<?php echo $servicio->precio; ?></span></p>
+
+            <div class="acciones">
+                <a class="boton" href="/servicios/actualizar?id=<?php echo $servicio->id; ?>">Actualizar</a>
+
+                <form action="/servicios/eliminar" method="POST">
+                    <input type="hidden" name="id" value="<?php echo $servicio->id; ?>">
+
+                    <input type="submit" value="Borrar" class="boton-eliminar">
+                </form>
+            </div>
+        </li>
+    <?php } ?>
+</ul>
+</file>
+
+<file path="views/templates/alertas.php">
+<?php
+    foreach($alertas as $key => $mensajes):
+        foreach($mensajes as $mensaje):
+?>
+    <div class="alerta <?php echo $key; ?>">
+        <?php echo $mensaje; ?>
+    </div>
+<?php
+        endforeach; 
+    endforeach;
+?>
+</file>
+
+<file path="views/templates/barra.php">
+<div class="barra">
+    <p>Hola: <span><?php echo $nombre; ?></span></p>
+    <a class="boton" href="/logout">Cerrar Sesión</a>
+</div>
+
+<?php if(isset($_SESSION['admin'])) { ?>
+    <div class="barra-servicios">
+        <a class="boton" href="/admin">Ver Citas</a>
+        <a class="boton" href="/servicios">Ver Servicios</a>
+        <a class="boton" href="/servicios/crear">Nuevo Servicio</a>
+    </div>    
+<?php } ?>
+</file>
+
+<file path="classes/Email.php">
+<?php
+
+namespace Classes;
+
+use PHPMailer\PHPMailer\PHPMailer;
+
+class Email {
+    private $email;
+    private $nombre;
+    private $token;
+
+    public function __construct($email, $nombre, $token) {
+        $this->email = $email;
+        $this->nombre = $nombre;
+        $this->token = $token;
+    }
+
+    public function enviarConfirmacion() {
+        $mail = new PHPMailer();
+        $mail->isSMTP();
+        $mail->Host = $_ENV['EMAIL_HOST'];
+        $mail->SMTPAuth = true;
+        $mail->Port = $_ENV['EMAIL_PORT'];
+        $mail->Username = $_ENV['EMAIL_USER'];
+        $mail->Password = $_ENV['EMAIL_PASS'];
+
+        $mail->setFrom($_ENV['EMAIL_USER'], 'AppSalon');
+        $mail->addAddress($this->email, $this->nombre);
+        $mail->Subject = 'Confirma tu cuenta';
+        $mail->isHTML(true);
+        $mail->CharSet = 'UTF-8';
+
+        $contenido  = '<html>';
+        $contenido .= "<p><strong>Hola {$this->nombre}</strong>, has creado tu cuenta en AppSalon, solo debes confirmarla presionando el siguiente enlace</p>";
+        $contenido .= "<p>Presiona aquí: <a href='{$_ENV['APP_URL']}/confirmar-cuenta?token={$this->token}'>Confirmar Cuenta</a></p>";
+        $contenido .= '<p>Si tu no solicitaste esta cuenta, puedes ignorar el mensaje</p>';
+        $contenido .= '</html>';
+        $mail->Body = $contenido;
+
+        $mail->send();
+    }
+
+    public function enviarInstrucciones() {
+        $mail = new PHPMailer();
+        $mail->isSMTP();
+        $mail->Host = $_ENV['EMAIL_HOST'];
+        $mail->SMTPAuth = true;
+        $mail->Port = $_ENV['EMAIL_PORT'];
+        $mail->Username = $_ENV['EMAIL_USER'];
+        $mail->Password = $_ENV['EMAIL_PASS'];
+
+        $mail->setFrom('cuentas@appsalon.com', 'AppSalon');
+        $mail->addAddress($this->email, $this->nombre);
+        $mail->Subject = 'Reestablece tu password';
+
+        // Set HTML
+        $mail->isHTML(TRUE);
+        $mail->CharSet = 'UTF-8';
+
+        $contenido = '<html>';
+        $contenido .= '<p><strong>Hola ' . $this->nombre . '</strong>, has solicitado reestablecer tu password, solo debes presionar el siguiente enlace</p>';
+        $contenido .= "<p>Presiona aquí: <a href='" . $_ENV['APP_URL'] . "/recuperar?token=" . $this->token . '">Reestablecer Password</a></p>';
+        $contenido .= '<p>Si tu no solicitaste este cambio, puedes ignorar el mensaje</p>';
+        $contenido .= '</html>';
+        $mail->Body = $contenido;
+
+        // Enviar el email
+        $mail->send();
+    }
+}
+</file>
+
+<file path="includes/.env">
+DB_HOST=localhost
+DB_USER=root
+DB_PASS=Angeljose0078
+DB_NAME=appsalon
+
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=j.capellanherasme@gmail.com
+EMAIL_PASS="aoam iugx rdzw jpmh"
+
+APP_URL=http://localhost:3000
+</file>
+
+<file path="views/admin/index.php">
+<h1 class="nombre-pagina">Administración</h1>
+<p class="descripcion-pagina">Panel de Administración</p>
+
+<?php include_once __DIR__ . '/../templates/barra.php'; ?>
+
+<h2>Buscar Citas</h2>
+<div class="busqueda">
+    <form class="formulario">
+        <div class="campo">
+            <label for="fecha">Fecha</label>
+            <input
+                type="date"
+                id="fecha"
+                name="fecha"
+                value="<?php echo $_GET['fecha'] ?? date('Y-m-d'); ?>"
+            />
+        </div>
+    </form>
+</div>
+
+<?php
+    if(count($citas) === 0) {
+        echo "<h2>No hay citas en esta fecha</h2>";
+    }
+?>
+
+<div id="citas-admin">
+    <ul class="citas">
+        <?php
+            $idCita = 0;
+            foreach($citas as $key => $cita) {
+                if($idCita !== $cita->id) {
+                    $idCita = $cita->id;
+        ?>
+                <li>
+                    <p>Cliente: <span><?php echo $cita->cliente; ?></span></p>
+                    <p>Hora: <span><?php echo $cita->hora; ?></span></p>
+                    <p>Teléfono: <span><?php echo $cita->telefono; ?></span></p>
+                    
+                    <!-- <p>ID: <span><?php echo $cita->id; ?></span></p>
+                    <p>Hora: <span><?php echo $cita->hora; ?></span></p>
+                    <p>Cliente: <span><?php echo $cita->cliente; ?></span></p>
+                    <p>Email: <span><?php echo $cita->email; ?></span></p>
+                    <p>Teléfono: <span><?php echo $cita->telefono; ?></span></p> -->
+
+                    <h3>Servicios</h3>
+        <?php } ?>
+
+                <p class="servicio"><?php echo $cita->servicio . ' - $' . $cita->precio; ?></p>
+
+        <?php
+                $actual = $cita->id;
+                $proximo = $citas[$key + 1]->id ?? 0;
+
+                if($actual !== $proximo) { ?>
+                    <p class="total">Total: <span>$<?php echo calcularTotal($citas, $actual); ?></span></p>
+                    
+                    <form action="/api/eliminar" method="POST">
+                        <input type="hidden" name="id" value="<?php echo $cita->id; ?>">
+                        <input type="submit" class="boton-eliminar" value="Eliminar">
+                    </form>
+                </li>
+        <?php } ?>
+
+        <?php } // Fin del foreach ?>
+    </ul>
+</div>
+
+<?php 
+    $script = "<script src='build/js/buscador.js'></script>";
+?>
+</file>
+
+<file path="views/layout.php">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Salón</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;700;900&display=swap" rel="stylesheet"> 
+    <link rel="stylesheet" href="/build/css/app.css">
+</head>
+<body>
+    <div class="contenedor-app">
+        <div class="imagen"></div>
+        <div class="app">
+            <?php echo $contenido; ?>
+        </div>
+    </div>
+
+    <?php echo $script ?? ''; ?>
+</body>
+</html>
+</file>
+
+<file path=".gitignore">
+# /vendor
+# /node_modules
+# includes/.env
+# /public/build
+# .DS_Store
+# Thumbs.db
+# *.log
+</file>
+
+</files>

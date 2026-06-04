@@ -7,6 +7,7 @@ use Controllers\AdminController;
 use Controllers\APIController;
 use Controllers\LoginController;
 use Controllers\CitaController;
+use Controllers\BarberoController;
 use MVC\Router;
 $router = new Router();
 
@@ -45,6 +46,14 @@ $router->post('/servicios/crear', [ServicioController::class, 'crear']);
 $router->get('/servicios/actualizar', [ServicioController::class, 'actualizar']);
 $router->post('/servicios/actualizar', [ServicioController::class, 'actualizar']);
 $router->post('/servicios/eliminar', [ServicioController::class, 'eliminar']);
+
+// CRUD de barberos
+$router->get('/barberos', [BarberoController::class, 'index']);
+$router->get('/barberos/crear', [BarberoController::class, 'crear']);
+$router->post('/barberos/crear', [BarberoController::class, 'crear']);
+$router->get('/barberos/actualizar', [BarberoController::class, 'actualizar']);
+$router->post('/barberos/actualizar', [BarberoController::class, 'actualizar']);
+$router->post('/barberos/eliminar', [BarberoController::class, 'eliminar']);
 
 // Comprueba y valida las rutas, que existan y les asigna las funciones del Controlador
 $router->comprobarRutas();

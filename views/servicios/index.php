@@ -3,6 +3,10 @@
 
 <?php include_once __DIR__ . '/../templates/barra.php'; ?>
 
+<div class="barra-servicios">
+    <a href="/servicios/crear" class="boton">Nuevo Servicio</a>
+</div>
+
 <ul class="servicios">
     <?php foreach($servicios as $servicio) {?>
         <li>

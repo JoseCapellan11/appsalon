@@ -36,6 +36,7 @@
                     <p>Cliente: <span><?php echo $cita->cliente; ?></span></p>
                     <p>Hora: <span><?php echo $cita->hora; ?></span></p>
                     <p>Teléfono: <span><?php echo $cita->telefono; ?></span></p>
+                    <p>Barbero: <span><?php echo $cita->barbero; ?></span></p>
                     
                     <!-- <p>ID: <span><?php echo $cita->id; ?></span></p>
                     <p>Hora: <span><?php echo $cita->hora; ?></span></p>

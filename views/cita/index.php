@@ -6,8 +6,9 @@
 <div id="app">
     <nav class="tabs">
         <button class="actual" type="button" data-paso="1">Servicios</button>
-        <button type="button" data-paso="2">Información Cita</button>
-        <button type="button" data-paso="3">Resumen</button>
+        <button type="button" data-paso="2">Barbero</button>
+        <button type="button" data-paso="3">Información Cita</button>
+        <button type="button" data-paso="4">Resumen</button>
     </nav>
 
     <div id="paso-1" class="seccion">
@@ -17,6 +18,18 @@
     </div>
 
     <div id="paso-2" class="seccion">
+        <h2>Barbero</h2>
+        <p class="text-center">Elige tu barbero a continuación</p>
+        <div class="listado-barberos">
+            <?php foreach($barberos as $barbero) { ?>
+                <div class="barbero" data-id-barbero="<?php echo $barbero->id; ?>">
+                    <p><?php echo $barbero->nombre . ' ' . $barbero->apellido; ?></p>
+                </div>
+            <?php } ?>
+        </div>
+    </div>
+
+    <div id="paso-3" class="seccion">
         <h2>Tus Datos y Cita</h2>
         <p class="text-center">Coloca tus datos y fecha de tu cita</p>
 
@@ -52,9 +65,10 @@
         </form>
     </div>
 
-    <div id="paso-3" class="seccion contenido-resumen">
+    <div id="paso-4" class="seccion">
         <h2>Resumen de Cita</h2>
         <p class="text-center">Verifica que la información sea correcta</p>
+        <div class="contenido-resumen"></div>
     </div>
 
     <div class="paginacion">

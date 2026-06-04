@@ -1,12 +1,13 @@
 let paso = 1;
 const pasoInicial = 1;
-const pasoFinal = 3;
+const pasoFinal = 4;
 
 const cita = {
     id: '',
     nombre: '',
     fecha: '',
     hora: '',
+    barberoId: '',
     servicios: []
 }
 
@@ -29,6 +30,7 @@ function iniciarApp() {
     seleccionarHora(); // Agrega la hora de la cita al objeto de cita
 
     muestraResumen(); // Muestra el resumen de la cita
+    seleccionarBarbero(); // Agrega el barbero seleccionado al objeto de cita
 }
 
 function mostrarSeccion() {
@@ -247,22 +249,16 @@ function muestraResumen() {
         return;
     }
 
-    // Formatear el div de resumen
     const { nombre, fecha, hora, servicios } = cita;
 
-    const serviciosCliente = document.createElement('DIV');
-    serviciosCliente.classList.add('servicios-resumen');
-    serviciosCliente.innerHTML = '<h4 class="titulo-servicios">Servicios</h4>';
-
-    // Heading para servicios en el resumen
+    // Heading servicios
     const headingServicios = document.createElement('H3');
     headingServicios.textContent = 'Resumen de Servicios';
     resumen.appendChild(headingServicios);
 
-
     // Iterando y mostrando los servicios
     servicios.forEach(servicio => {
-        const {id, nombre, precio} = servicio;
+        const { nombre, precio } = servicio;
         const contenedorServicio = document.createElement('DIV');
         contenedorServicio.classList.add('contenedor-servicio');
 
@@ -274,44 +270,50 @@ function muestraResumen() {
 
         contenedorServicio.appendChild(textoServicio);
         contenedorServicio.appendChild(precioServicio);
-
         resumen.appendChild(contenedorServicio);
     });
 
-    // Heading para servicios en el resumen
+    // Heading cita
     const headingCita = document.createElement('H3');
-    headingCita.textContent = 'Resumen de cita';
+    headingCita.textContent = 'Resumen de Cita';
     resumen.appendChild(headingCita);
 
+    // Barbero
+    const barberoSeleccionado = document.querySelector(`.barbero[data-id-barbero="${cita.barberoId}"]`);
+    const nombreBarbero = barberoSeleccionado ? barberoSeleccionado.querySelector('p').textContent : '';
+    const barbero = document.createElement('P');
+    barbero.innerHTML = `<span>Barbero:</span> ${nombreBarbero}`;
+
+    // Nombre
     const nombreCliente = document.createElement('P');
     nombreCliente.innerHTML = `<span>Nombre:</span> ${nombre}`;
 
-    // Formatear la fecha en español
+    // Fecha
     const fechaObj = new Date(fecha + 'T00:00:00');
     const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     const fechaFormateada = fechaObj.toLocaleDateString('es-MX', opciones);
-
     const fechaCita = document.createElement('P');
     fechaCita.innerHTML = `<span>Fecha:</span> ${fechaFormateada}`;
 
+    // Hora
     const horaCita = document.createElement('P');
     horaCita.innerHTML = `<span>Hora:</span> ${hora}`;
 
-    // button para crear la cita
+    // Botón reservar
     const botonReservar = document.createElement('BUTTON');
     botonReservar.classList.add('boton');
-    botonReservar.textContent = 'Reservar cita';
+    botonReservar.textContent = 'Reservar Cita';
     botonReservar.onclick = reservarCita;
 
+    resumen.appendChild(barbero);
     resumen.appendChild(nombreCliente);
     resumen.appendChild(fechaCita);
     resumen.appendChild(horaCita);
-
     resumen.appendChild(botonReservar);
 }
 
 async function reservarCita() {
-    const { nombre, fecha, hora, servicios, id } = cita;
+    const { nombre, fecha, hora, servicios, id, barberoId } = cita;
     const idServicios = servicios.map(servicio => servicio.id);
 
     const datos = new FormData();
@@ -319,6 +321,7 @@ async function reservarCita() {
     datos.append('hora', hora);
     datos.append('usuarioId', id);
     datos.append('servicios', idServicios);
+    datos.append('barberoId', barberoId);
 
     try {
         const url = '/api/citas';
@@ -347,4 +350,17 @@ async function reservarCita() {
             confirmButtonText: 'Ok'
         });
     }
+}
+
+function seleccionarBarbero() {
+    const barberos = document.querySelectorAll('.barbero');
+    barberos.forEach(barbero => {
+        barbero.addEventListener('click', function() {
+            // Quitar selección anterior
+            barberos.forEach(b => b.classList.remove('seleccionado'));
+            // Seleccionar el actual
+            this.classList.add('seleccionado');
+            cita.barberoId = this.dataset.idBarbero;
+        });
+    });
 }

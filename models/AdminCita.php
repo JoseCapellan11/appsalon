@@ -2,18 +2,16 @@
 
 namespace Model;
 
-use Model\ActiveRecord;
-
 class AdminCita extends ActiveRecord {
-    // Base de datos
     protected static $tabla = 'citas';
-    protected static $columnasDB = ['id', 'hora', 'cliente', 'email', 'telefono', 'servicio', 'precio'];
+    protected static $columnasDB = ['id', 'hora', 'cliente', 'email', 'telefono', 'barbero', 'servicio', 'precio'];
 
     public $id;
     public $hora;
     public $cliente;
     public $email;
     public $telefono;
+    public $barbero;
     public $servicio;
     public $precio;
 
@@ -23,6 +21,7 @@ class AdminCita extends ActiveRecord {
         $this->cliente = $args['cliente'] ?? '';
         $this->email = $args['email'] ?? '';
         $this->telefono = $args['telefono'] ?? '';
+        $this->barbero = $args['barbero'] ?? '';
         $this->servicio = $args['servicio'] ?? '';
         $this->precio = $args['precio'] ?? '';
     }
