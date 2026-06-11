@@ -3,7 +3,7 @@
 
 <?php include_once __DIR__ . '/../templates/alertas.php'; ?>
 
-<form class="formulario" method="POST" action="/">
+<form class="formulario" method="POST" action="/login">
     <div class="campo">
         <label for="email">Email</label>
         <input 

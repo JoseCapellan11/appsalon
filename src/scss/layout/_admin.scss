@@ -1,4 +1,5 @@
 @use 'base/variables' as v;
+@use 'base/mixins' as m;
 
 .no-citas {
     text-align: center;
@@ -69,18 +70,53 @@
 }
 
 .servicios {
-    @extend .citas;
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: 2rem;
 
-    .acciones {
-        margin-top: 2rem;
-        display: flex;
-        gap: 1rem;
+    @include m.tablet {
+        @include m.grid(2, 2rem);
     }
 
-    .boton,
-    .boton-eliminar {
-        margin: 0;
-        padding: 0.8rem 2rem;
-        font-size: 1.3rem;
+    @include m.desktop {
+        @include m.grid(3, 2rem);
+    }
+
+    li {
+        background-color: v.$negro_claro;
+        border: 1px solid v.$gris_oscuro;
+        border-left: 4px solid v.$dorado;
+        border-radius: 1rem;
+        padding: 2.5rem;
+        transition: border-color 300ms ease;
+
+        &:hover {
+            border-color: v.$dorado;
+        }
+
+        p {
+            font-weight: v.$bold;
+            color: v.$dorado;
+            margin-bottom: 0.5rem;
+        }
+
+        span {
+            font-weight: v.$regular;
+            color: v.$gris_claro;
+        }
+
+        .acciones {
+            margin-top: 2rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .boton,
+        .boton-eliminar {
+            margin: 0;
+            padding: 0.8rem 2rem;
+            font-size: 1.3rem;
+        }
     }
 }

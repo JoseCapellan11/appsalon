@@ -3,41 +3,21 @@
 @use 'base/mixins' as m;
 
 .contenedor-app {
-    @include m.tablet {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        min-height: 100vh;
-    }
+    min-height: 100vh;
+    background-color: v.$negro;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
     .imagen {
-        height: 20rem;
-        background-image: url('../img/1.jpg');
-        background-size: cover;
-        background-position: center center;
-        position: relative;
-
-        &::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.7));
-        }
-
-        @include m.tablet {
-            height: auto;
-        }
+        display: none;
     }
 
     .app {
         width: 90%;
+        max-width: 120rem;
         margin: 0 auto;
-        padding: 3rem 0;
-        @include m.tablet {
-            overflow: scroll;
-        }
+        padding: 5rem 0;
     }
 }
 

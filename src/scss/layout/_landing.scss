@@ -1,0 +1,311 @@
+@use 'sass:color';
+@use 'base/variables' as v;
+@use 'base/mixins' as m;
+
+// NAVBAR
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background-color: rgba(13, 13, 13, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid v.$gris_oscuro;
+    padding: 1.5rem 0;
+
+    &__contenedor {
+        width: 90%;
+        max-width: 120rem;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    &__logo {
+        font-size: 2.4rem;
+        font-weight: v.$black;
+        color: v.$blanco;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+
+        span {
+            color: v.$dorado;
+        }
+    }
+
+    &__nav {
+        display: flex;
+        align-items: center;
+        gap: 3rem;
+
+        a {
+            color: v.$gris_claro;
+            font-size: 1.4rem;
+            font-weight: v.$bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: color 300ms ease;
+
+            &:hover {
+                color: v.$dorado;
+            }
+        }
+    }
+
+    &__cta {
+        background-color: v.$dorado !important;
+        color: v.$negro !important;
+        padding: 0.8rem 2rem;
+        border-radius: 0.5rem;
+
+        &:hover {
+            background-color: v.$dorado_oscuro !important;
+            color: v.$negro !important;
+        }
+    }
+}
+
+// HERO
+.hero {
+    min-height: 100vh;
+    background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('/build/img/1.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+
+    &__contenido {
+        width: 90%;
+        max-width: 80rem;
+
+        h1 {
+            font-size: 6rem;
+            font-weight: v.$black;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            line-height: 1.1;
+            margin-bottom: 2rem;
+
+            span {
+                color: v.$dorado;
+            }
+
+            @include m.tablet {
+                font-size: 8rem;
+            }
+        }
+
+        p {
+            font-size: 2rem;
+            color: v.$gris_claro;
+            margin-bottom: 4rem;
+        }
+    }
+}
+
+// SECCIONES
+.landing-seccion {
+    padding: 10rem 0;
+    background-color: v.$negro;
+
+    &--oscura {
+        background-color: v.$negro_medio;
+    }
+}
+
+.landing-contenedor {
+    width: 90%;
+    max-width: 120rem;
+    margin: 0 auto;
+}
+
+.landing-titulo {
+    font-size: 4rem;
+    font-weight: v.$black;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-align: center;
+    margin-bottom: 1rem;
+
+    span {
+        color: v.$dorado;
+    }
+}
+
+.landing-subtitulo {
+    text-align: center;
+    color: v.$gris;
+    font-size: 1.8rem;
+    margin-bottom: 6rem;
+}
+
+// GRID DE CARDS
+.landing-grid {
+    display: grid;
+    gap: 3rem;
+
+    @include m.tablet {
+        @include m.grid(2, 3rem);
+    }
+
+    @include m.desktop {
+        @include m.grid(3, 3rem);
+    }
+}
+
+// CARDS
+.landing-card {
+    background-color: v.$negro_claro;
+    border: 1px solid v.$gris_oscuro;
+    border-top: 3px solid v.$dorado;
+    border-radius: 1rem;
+    padding: 3rem;
+    text-align: center;
+    transition: transform 300ms ease, box-shadow 300ms ease;
+
+    &:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(201, 168, 76, 0.15);
+    }
+
+    h3 {
+        color: v.$blanco;
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        margin-top: 0;
+    }
+
+    p {
+        color: v.$gris_claro;
+        margin-bottom: 2rem;
+    }
+
+    &__precio {
+        font-size: 3.5rem;
+        font-weight: v.$black;
+        color: v.$dorado !important;
+        margin-bottom: 2rem !important;
+    }
+
+    &__avatar {
+        width: 8rem;
+        height: 8rem;
+        border-radius: 50%;
+        background-color: v.$dorado;
+        color: v.$negro;
+        font-size: 3rem;
+        font-weight: v.$black;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 2rem auto;
+    }
+
+    .boton {
+        margin-top: 0;
+    }
+}
+
+// NOSOTROS
+.landing-nosotros {
+    @include m.tablet {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6rem;
+        align-items: center;
+    }
+
+    &__texto {
+        p {
+            color: v.$gris_claro;
+            font-size: 1.8rem;
+            line-height: 1.8;
+            margin-bottom: 2rem;
+        }
+    }
+
+    &__imagen {
+        height: 40rem;
+        background-image: url('/build/img/1.jpg');
+        background-size: cover;
+        background-position: center;
+        border-radius: 1rem;
+        border: 3px solid v.$dorado;
+    }
+}
+
+// CONTACTO
+.landing-contacto {
+    display: grid;
+    gap: 3rem;
+
+    @include m.tablet {
+        @include m.grid(3, 3rem);
+    }
+
+    &__item {
+        background-color: v.$negro_claro;
+        border: 1px solid v.$gris_oscuro;
+        border-top: 3px solid v.$dorado;
+        border-radius: 1rem;
+        padding: 3rem;
+        text-align: center;
+
+        h3 {
+            color: v.$dorado;
+            font-size: 1.8rem;
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+        }
+
+        p {
+            color: v.$gris_claro;
+            font-size: 1.6rem;
+            margin-bottom: 0.5rem;
+        }
+    }
+}
+
+// FOOTER
+.footer {
+    background-color: v.$negro_medio;
+    border-top: 1px solid v.$gris_oscuro;
+    padding: 3rem 0;
+
+    .landing-contenedor {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    p {
+        color: v.$gris;
+        font-size: 1.4rem;
+        margin: 0;
+    }
+
+    &__link {
+        color: v.$dorado;
+        font-size: 1.4rem;
+        font-weight: v.$bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+
+        &:hover {
+            color: v.$dorado_oscuro;
+        }
+    }
+}
+
+// Body landing sin padding
+body.landing {
+    padding: 0;
+    margin: 0;
+}

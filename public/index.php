@@ -8,12 +8,17 @@ use Controllers\APIController;
 use Controllers\LoginController;
 use Controllers\CitaController;
 use Controllers\BarberoController;
+use Controllers\LandingController; // ← agregar
 use MVC\Router;
+
 $router = new Router();
 
-// Iniciar sesión
-$router->get('/', [LoginController::class, 'login']);
-$router->post('/', [LoginController::class, 'login']);
+// Landing page pública
+$router->get('/', [LandingController::class, 'index']); // ← nueva ruta
+
+// Iniciar sesión - cambiar de / a /login
+$router->get('/login', [LoginController::class, 'login']); // ← cambiar
+$router->post('/login', [LoginController::class, 'login']); // ← cambiar
 $router->get('/logout', [LoginController::class, 'logout']);
 
 // Recuperar Password
@@ -55,5 +60,4 @@ $router->get('/barberos/actualizar', [BarberoController::class, 'actualizar']);
 $router->post('/barberos/actualizar', [BarberoController::class, 'actualizar']);
 $router->post('/barberos/eliminar', [BarberoController::class, 'eliminar']);
 
-// Comprueba y valida las rutas, que existan y les asigna las funciones del Controlador
 $router->comprobarRutas();
