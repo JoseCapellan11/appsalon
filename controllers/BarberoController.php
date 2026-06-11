@@ -46,8 +46,19 @@ class BarberoController {
         isAdmin();
 
         $alertas = [];
-        $id = $_GET['id'];
+        $id = $_GET['id'] ?? null;
+
+        if(!$id) {
+            header('Location: /barberos');
+            exit;
+        }
+
         $barbero = Barbero::find($id);
+
+        if(!$barbero) {
+            header('Location: /barberos');
+            exit;
+        }
 
         if($_SERVER['REQUEST_METHOD'] === 'POST') {
             $barbero->sincronizar($_POST);

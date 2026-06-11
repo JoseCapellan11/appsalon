@@ -45,28 +45,22 @@ classes/Email.php
 composer.json
 controllers/AdminController.php
 controllers/APIController.php
+controllers/BarberoController.php
 controllers/CitaController.php
 controllers/LoginController.php
 controllers/ServicioController.php
 gulpfile.js
-includes/.env
 includes/app.php
 includes/database.php
 includes/funciones.php
 models/ActiveRecord.php
 models/AdminCita.php
+models/Barbero.php
 models/Cita.php
 models/CitaServicio.php
 models/Servicio.php
 models/Usuario.php
 package.json
-public/build/css/app.css
-public/build/css/app.css.map
-public/build/img/1.avif
-public/build/img/1.jpg
-public/build/img/1.webp
-public/build/js/app.js
-public/build/js/buscador.js
 public/index.php
 Router.php
 src/img/1.jpg
@@ -99,6 +93,10 @@ views/auth/login.php
 views/auth/mensaje.php
 views/auth/olvide-password.php
 views/auth/recuperar-password.php
+views/barberos/actualizar.php
+views/barberos/crear.php
+views/barberos/formulario.php
+views/barberos/index.php
 views/cita/index.php
 views/layout.php
 views/servicios/actualizar.php
@@ -134,48 +132,6 @@ This section contains the contents of the repository's files.
     "require": {
         "phpmailer/phpmailer": "^7.1",
         "vlucas/phpdotenv": "^5.6"
-    }
-}
-</file>
-
-<file path="controllers/AdminController.php">
-<?php
-
-namespace Controllers;
-
-use Model\AdminCita;
-use MVC\Router;
-
-class AdminController {
-    public static function index(Router $router) {
-
-        isAdmin();
-
-        $fecha = $_GET['fecha'] ?? date('Y-m-d');
-        $fechas = explode('-', $fecha);
-
-        if(!checkdate($fechas[1], $fechas[2], $fechas[0])) {
-            header('Location: /404');
-            exit;
-        }
-
-        $consulta  = " SELECT citas.id, citas.hora, CONCAT(usuarios.nombre, ' ', usuarios.apellido) as cliente, ";
-        $consulta .= " usuarios.email, usuarios.telefono, servicios.nombre as servicio, servicios.precio ";
-        $consulta .= " FROM citas ";
-        $consulta .= " LEFT OUTER JOIN usuarios ON citas.usuarioId = usuarios.id ";
-        $consulta .= " LEFT OUTER JOIN citasservicios ON citasservicios.citaId = citas.id ";
-        $consulta .= " LEFT OUTER JOIN servicios ON servicios.id = citasservicios.servicioId ";
-        $consulta .= " WHERE citas.fecha = '$fecha' ";
-        // $consulta .= " WHERE fecha = '$fecha' ";
-        
-
-        $citas = AdminCita::SQL($consulta);
-
-        $router->render('admin/index', [
-            'nombre' => $_SESSION['nombre'],
-            'citas' => $citas,
-            'fecha' => $fecha
-        ]);
     }
 }
 </file>
@@ -232,23 +188,86 @@ class APIController {
 }
 </file>
 
-<file path="controllers/CitaController.php">
+<file path="controllers/BarberoController.php">
 <?php
 
 namespace Controllers;
 
+use Model\Barbero;
 use MVC\Router;
 
-class CitaController {
+class BarberoController {
 
-    public static function index(Router $router) { 
+    public static function index(Router $router) {
+        isAdmin();
 
-        isAuth();
+        $barberos = Barbero::all();
 
-        $router->render('cita/index', [
+        $router->render('barberos/index', [
             'nombre' => $_SESSION['nombre'],
-            'id' => $_SESSION['id']
+            'barberos' => $barberos
         ]);
+    }
+
+    public static function crear(Router $router) {
+        isAdmin();
+
+        $alertas = [];
+        $barbero = new Barbero();
+
+        if($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $barbero->sincronizar($_POST);
+            $alertas = $barbero->validar();
+
+            if(empty($alertas)) {
+                $barbero->guardar();
+                header('Location: /barberos');
+                exit;
+            }
+        }
+
+        $router->render('barberos/crear', [
+            'nombre' => $_SESSION['nombre'],
+            'alertas' => $alertas,
+            'barbero' => $barbero
+        ]);
+    }
+
+    public static function actualizar(Router $router) {
+        isAdmin();
+
+        $alertas = [];
+        $id = $_GET['id'];
+        $barbero = Barbero::find($id);
+
+        if($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $barbero->sincronizar($_POST);
+            $alertas = $barbero->validar();
+
+            if(empty($alertas)) {
+                $barbero->guardar();
+                header('Location: /barberos');
+                exit;
+            }
+        }
+
+        $router->render('barberos/actualizar', [
+            'nombre' => $_SESSION['nombre'],
+            'alertas' => $alertas,
+            'barbero' => $barbero
+        ]);
+    }
+
+    public static function eliminar(Router $router) {
+        isAdmin();
+
+        if($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = $_POST['id'];
+            $barbero = Barbero::find($id);
+            $barbero->eliminar();
+            header('Location: /barberos');
+            exit;
+        }
     }
 }
 </file>
@@ -913,58 +932,35 @@ class ActiveRecord {
 }
 </file>
 
-<file path="models/AdminCita.php">
+<file path="models/Barbero.php">
 <?php
 
 namespace Model;
 
-use Model\ActiveRecord;
-
-class AdminCita extends ActiveRecord {
-    // Base de datos
-    protected static $tabla = 'citas';
-    protected static $columnasDB = ['id', 'hora', 'cliente', 'email', 'telefono', 'servicio', 'precio'];
+class Barbero extends ActiveRecord {
+    protected static $tabla = 'barberos';
+    protected static $columnasDB = ['id', 'nombre', 'apellido', 'imagen'];
 
     public $id;
-    public $hora;
-    public $cliente;
-    public $email;
-    public $telefono;
-    public $servicio;
-    public $precio;
+    public $nombre;
+    public $apellido;
+    public $imagen;
 
     public function __construct($args = []) {
         $this->id = $args['id'] ?? null;
-        $this->hora = $args['hora'] ?? '';
-        $this->cliente = $args['cliente'] ?? '';
-        $this->email = $args['email'] ?? '';
-        $this->telefono = $args['telefono'] ?? '';
-        $this->servicio = $args['servicio'] ?? '';
-        $this->precio = $args['precio'] ?? '';
+        $this->nombre = $args['nombre'] ?? '';
+        $this->apellido = $args['apellido'] ?? '';
+        $this->imagen = $args['imagen'] ?? '';
     }
-}
-</file>
 
-<file path="models/Cita.php">
-<?php
-
-namespace Model;
-
-class Cita extends ActiveRecord {
-    // Base de datos
-    protected static $tabla = 'citas';
-    protected static $columnasDB = ['id', 'usuarioId', 'fecha', 'hora'];
-
-    public $id;
-    public $fecha;
-    public $hora;
-    public $usuarioId;
-
-    public function __construct($args = []) {
-        $this->id = $args['id'] ?? null;
-        $this->fecha = $args['fecha'] ?? '';
-        $this->hora = $args['hora'] ?? '';
-        $this->usuarioId = $args['usuarioId'] ?? '';
+    public function validar() {
+        if(!$this->nombre) {
+            self::$alertas['error'][] = 'El Nombre del Barbero es Obligatorio';
+        }
+        if(!$this->apellido) {
+            self::$alertas['error'][] = 'El Apellido del Barbero es Obligatorio';
+        }
+        return self::$alertas;
     }
 }
 </file>
@@ -1177,75 +1173,6 @@ class Usuario extends ActiveRecord {
 }
 </file>
 
-<file path="public/build/css/app.css">
-/*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */html{line-height:1.15;-webkit-text-size-adjust:100%}body{margin:0}main{display:block}h1{font-size:2em;margin:.67em 0}hr{box-sizing:content-box;height:0;overflow:visible}pre{font-family:monospace,monospace;font-size:1em}a{background-color:rgba(0,0,0,0)}abbr[title]{border-bottom:none;text-decoration:underline;text-decoration:underline dotted}b,strong{font-weight:bolder}code,kbd,samp{font-family:monospace,monospace;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-0.25em}sup{top:-0.5em}img{border-style:none}button,input,optgroup,select,textarea{font-family:inherit;font-size:100%;line-height:1.15;margin:0}button,input{overflow:visible}button,select{text-transform:none}button,[type=button],[type=reset],[type=submit]{-webkit-appearance:button}button::-moz-focus-inner,[type=button]::-moz-focus-inner,[type=reset]::-moz-focus-inner,[type=submit]::-moz-focus-inner{border-style:none;padding:0}button:-moz-focusring,[type=button]:-moz-focusring,[type=reset]:-moz-focusring,[type=submit]:-moz-focusring{outline:1px dotted ButtonText}fieldset{padding:.35em .75em .625em}legend{box-sizing:border-box;color:inherit;display:table;max-width:100%;padding:0;white-space:normal}progress{vertical-align:baseline}textarea{overflow:auto}[type=checkbox],[type=radio]{box-sizing:border-box;padding:0}[type=number]::-webkit-inner-spin-button,[type=number]::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}[type=search]::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}details{display:block}summary{display:list-item}template{display:none}[hidden]{display:none}html{font-size:62.5%;box-sizing:border-box;height:100%}body{min-height:100%}@media(min-width: 768px){body{height:100%}}body{display:flex;flex-direction:column;background-color:#1a1b15;color:#fff;font-family:"Poppins",sans-serif;font-size:1.6rem}*,*:before,*:after{box-sizing:inherit}.contenedor{width:95%;max-width:1200px;margin:0 auto}a{text-decoration:none}img{max-width:100%}h1,h2,h3{font-family:"Poppins",sans-serif;margin:0 0 2.5rem 0;font-weight:900;color:#fff;text-align:center}h1{font-size:4rem}h2{font-size:3.6rem}h3{font-size:3rem;text-align:center}p{color:#fff;font-size:2rem}.nombre-pagina{text-align:center;margin:5rem 0;font-weight:700}.descripcion-pagina{text-align:center}@media(min-width: 768px){.contenedor-app{display:grid;grid-template-columns:repeat(2, 1fr);min-height:100vh}}.contenedor-app .imagen{height:20rem;background-image:url("../img/1.jpg");background-size:cover;background-position:center center}@media(min-width: 768px){.contenedor-app .imagen{height:auto}}.contenedor-app .app{width:95%;margin:0 auto;padding:3rem 0}@media(min-width: 768px){.contenedor-app .app{overflow:scroll}}.barra{margin:5rem 0}@media(min-width: 768px){.barra{display:flex;justify-content:space-between;align-items:center}}.barra .boton{background-color:#1a1b15;padding:1.5rem 4rem;color:#fff;margin-top:2rem;font-size:2rem;font-weight:400;display:inline-block;font-weight:700;border:none;transition-property:background-color;transition-duration:.3s;text-align:center;display:block;width:100%;margin:5rem 0}@media(min-width: 768px){.barra .boton{width:auto}}.barra .boton:hover{background-color:#000;cursor:pointer}.barra .boton{margin:0}.barra-servicios{margin-bottom:5rem}@media(min-width: 768px){.barra-servicios{display:flex;justify-content:space-between}}.barra-servicios .boton{margin:0 0 1rem 0}.seccion{padding:5rem 0;display:none}.seccion .text-center{text-align:center}.mostrar{display:block}.ocultar{display:none}.listado-servicios{display:grid;gap:2rem}@media(min-width: 768px){.listado-servicios{display:grid;gap:2rem;grid-template-columns:repeat(2, 1fr)}}.listado-servicios .servicio{background-color:#fff;padding:3rem;border-radius:1rem;transition-property:transform;transition-duration:300ms;text-align:center}.listado-servicios .servicio.seleccionado{background-color:#0da6f3}.listado-servicios .servicio.seleccionado p{color:#fff}.listado-servicios .servicio:hover{transform:scale(1.1)}.listado-servicios .servicio p{color:#1a1b15;margin:0 0 1.25rem 0}.listado-servicios .servicio .precio-servicio{color:#0da6f3;font-weight:700;font-size:3rem;margin:0}.contenido-resumen p{margin-bottom:1rem}.contenido-resumen span{color:#0da6f3;font-weight:700;font-size:2.4rem}.contenedor-servicio{padding:3rem 0;border-bottom:1px solid #e1e1e1}.contenedor-servicio:last-of-type{margin-bottom:5rem}.citas,.servicios{list-style:none;padding:0}.citas li,.servicios li{padding:1rem;border-top:1px solid #fff}.citas li p,.servicios li p{font-weight:700;color:#0da6f3}.citas li span,.servicios li span,.citas li .servicio,.servicios li .servicio{font-weight:400;color:#fff}.servicios .acciones{margin:0}.servicios .boton,.servicios .boton-eliminar{margin:0}.formulario{margin-top:5rem;width:100%}.campo{display:flex;margin-bottom:2rem;align-items:center}.campo label{flex:0 0 10rem}.campo input{flex:1;border:none;padding:1.25rem;border-radius:1rem}.campo input:disabled{background-color:hsl(70,12.5%,39.4117647059%);color:#fff;cursor:not-allowed}.boton{background-color:#0da6f3;padding:1.5rem 4rem;color:#fff;margin-top:2rem;font-size:2rem;font-weight:400;display:inline-block;font-weight:700;border:none;transition-property:background-color;transition-duration:.3s;text-align:center;display:block;width:100%;margin:5rem 0}@media(min-width: 768px){.boton{width:auto}}.boton:hover{background-color:rgb(9.6850393701,133.1692913386,195.3149606299);cursor:pointer}.boton-eliminar{background-color:#cb0000;padding:1.5rem 4rem;color:#fff;margin-top:2rem;font-size:2rem;font-weight:400;display:inline-block;font-weight:700;border:none;transition-property:background-color;transition-duration:.3s;text-align:center;display:block;width:100%;margin:5rem 0}@media(min-width: 768px){.boton-eliminar{width:auto}}.boton-eliminar:hover{background-color:#980000;cursor:pointer}.acciones{margin-top:5rem}@media(min-width: 768px){.acciones{display:flex;justify-content:space-between;align-items:center}}.acciones a{color:#fff;display:block;margin-bottom:2.5rem;text-align:center}.alerta{padding:1.25rem;color:#fff;width:100%;display:block;margin-bottom:2rem;text-align:center;font-weight:700;text-transform:uppercase}.alerta.error{background-color:#cb0000}.alerta.exito{background-color:#329f00}@media(min-width: 768px){.tabs{display:flex;gap:1rem}}.tabs button{background-color:#0da6f3;border:none;color:#fff;padding:1rem;display:block;width:100%;margin-bottom:1rem;text-transform:uppercase;font-weight:700;transition:background-color 300ms ease}.tabs button:hover{cursor:pointer;background-color:rgb(9.6850393701,133.1692913386,195.3149606299)}.tabs button.actual{background-color:#fff;color:#0da6f3}.paginacion{padding:5rem 0}@media(min-width: 480px){.paginacion{display:flex;justify-content:space-between}}.paginacion button{margin:0 0 1rem 0}.ocultar{visibility:hidden}/*# sourceMappingURL=app.css.map */
-</file>
-
-<file path="public/build/css/app.css.map">
-{"version":3,"sourceRoot":"","sources":["base/_normalize.scss","base/_globales.scss","base/_variables.scss","base/_tipografia.scss","base/_mixins.scss","layout/_UI.scss","layout/_cita.scss","layout/_servicios.scss","layout/_resumen.scss","layout/_admin.scss","componentes/_formulario.scss","componentes/_botones.scss","componentes/_acciones.scss","componentes/_alertas.scss","componentes/_tabs.scss","componentes/_paginacion.scss"],"names":[],"mappings":"AAAA,4EAUC,KACG,iBACA,8BAUF,KACE,SAOF,KACE,cAQF,GACE,cACA,eAWF,GACE,uBACA,SACA,iBAQF,IACE,gCACA,cAUF,EACE,+BAQF,YACE,mBACA,0BACA,iCAOF,SAEE,mBAQF,cAGE,gCACA,cAOF,MACE,cAQF,QAEE,cACA,cACA,kBACA,wBAGF,IACE,eAGF,IACE,WAUF,IACE,kBAWF,sCAKE,oBACA,eACA,iBACA,SAQF,aAEE,iBAQF,cAEE,oBAOF,gDAIE,0BAOF,wHAIE,kBACA,UAOF,4GAIE,8BAOF,SACE,2BAUF,OACE,sBACA,cACA,cACA,eACA,UACA,mBAOF,SACE,wBAOF,SACE,cAQF,6BAEE,sBACA,UAOF,kFAEE,YAQF,cACE,6BACA,oBAOF,yCACE,wBAQF,6BACE,0BACA,aAUF,QACE,cAOF,QACE,kBAUF,SACE,aAOF,SACE,aCxVJ,KACI,gBACA,sBACA,YAEJ,KACI,yCADJ,KAGQ,aAHR,KAKI,aACA,sBACA,iBCHI,QDIJ,MCFK,KDGL,YChBe,qBDiBf,iBAEJ,mBACI,mBAGJ,YACI,UACA,iBACA,cAEJ,EACI,qBAGJ,IACI,eEhCJ,SACI,YDFe,qBCGf,oBACA,gBACA,MDQK,KCPL,kBAGJ,GACI,eAEJ,GACI,iBAEJ,GACI,eACA,kBAEJ,EACI,MDPK,KCQL,eAGJ,eACI,kBACA,cACA,YDNG,ICSP,oBACI,kBCvBA,yBCNJ,gBAEQ,aACA,qCACA,kBAGJ,wBACI,aACA,qCACA,sBACA,kCDLJ,yBCCA,wBAMQ,aAIR,qBACI,UACA,cACA,eDdJ,yBCWA,qBAKQ,iBAKZ,OACI,cDtBA,yBCqBJ,OAIQ,aACA,8BACA,oBAGJ,cDlBA,iBFTI,QEUJ,oBACA,MFTK,KEUL,gBACA,eACA,gBACA,qBACA,gBACA,YACA,qCACA,wBACA,kBACA,cACA,WACA,cA1BA,yBC8BA,cDDI,YAEJ,oBACI,sBACA,eCHJ,cAEI,SAIR,iBACI,cH7BS,KERT,yBCoCJ,iBAIQ,aACA,+BAGJ,wBACI,kBCtDR,SACI,eACA,aAEA,sBACI,kBAIR,SACI,cAGJ,SACI,aCXJ,mBACI,aACA,SHIA,yBGNJ,mBH4CI,aACA,IGzCuB,KH0CvB,sCGvCA,6BACI,iBLGC,KKFD,aACA,mBACA,8BACA,0BACA,kBAEA,0CACI,iBLVL,QKWK,4CACI,MLPP,KKWD,mCACI,qBAGJ,+BACI,MLlBJ,QKmBI,qBAGJ,8CACI,ML1BL,QK2BK,YLdL,IKeK,eACA,SCnCR,qBACI,mBAGJ,wBACI,MNCD,oBAaA,IMZC,iBAIR,qBACI,eACA,gCAEA,kCACI,cNFK,KOfb,kBACI,gBACA,UAEA,wBACI,aACA,0BAEA,4BACI,YPWL,IOVK,MPHL,QOMC,8EAEI,YPID,IOHC,MPJH,KOYL,qBACI,SAGJ,6CAEI,SC7BR,YACI,gBACA,WAGJ,OACI,aACA,mBACA,mBAEA,aACI,eAGJ,aACI,OACA,YACA,gBACA,mBAEA,sBACI,8CACA,MRXH,KQYG,mBCvBZ,OPkBI,iBFZG,QEaH,oBACA,MFTK,KEUL,gBACA,eACA,gBACA,qBACA,gBACA,YACA,qCACA,wBACA,kBACA,cACA,WACA,cA1BA,yBONJ,OPmCQ,YAEJ,aACI,iEACA,eOnCR,gBPcI,iBFXG,QEYH,oBACA,MFTK,KEUL,gBACA,eACA,gBACA,qBACA,gBACA,YACA,qCACA,wBACA,kBACA,cACA,WACA,cA1BA,yBOFJ,gBP+BQ,YAEJ,sBACI,yBACA,eQvCR,UACI,WVaS,KERT,yBQNJ,UAGQ,aACA,8BACA,oBAGJ,YACI,MVEC,KUDD,cACA,qBACA,kBCbR,QACI,gBACA,MXUK,KWTL,WACA,cACA,mBACA,kBACA,YXaG,IWZH,yBAEA,cACI,iBXHD,QWMH,cACI,iBXND,QEFH,yBUNJ,MAGQ,aACA,UAGJ,aACI,iBZFD,QYGC,YACA,MZCC,kBYCD,cACA,WACA,mBACA,yBACA,YZGD,IYFC,uCAEA,mBACI,eACA,iEAGJ,oBACI,iBZdH,KYeG,MZpBL,QaNP,YACI,wCADJ,YAIQ,aACA,+BAGJ,mBACI,kBAIR,SACI","file":"app.css","sourcesContent":["/*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */\n\n/* Document\n   ========================================================================== */\n\n/**\n * 1. Correct the line height in all browsers.\n * 2. Prevent adjustments of font size after orientation changes in iOS.\n */\n\n html {\n    line-height: 1.15; /* 1 */\n    -webkit-text-size-adjust: 100%; /* 2 */\n  }\n  \n  /* Sections\n     ========================================================================== */\n  \n  /**\n   * Remove the margin in all browsers.\n   */\n  \n  body {\n    margin: 0;\n  }\n  \n  /**\n   * Render the `main` element consistently in IE.\n   */\n  \n  main {\n    display: block;\n  }\n  \n  /**\n   * Correct the font size and margin on `h1` elements within `section` and\n   * `article` contexts in Chrome, Firefox, and Safari.\n   */\n  \n  h1 {\n    font-size: 2em;\n    margin: 0.67em 0;\n  }\n  \n  /* Grouping content\n     ========================================================================== */\n  \n  /**\n   * 1. Add the correct box sizing in Firefox.\n   * 2. Show the overflow in Edge and IE.\n   */\n  \n  hr {\n    box-sizing: content-box; /* 1 */\n    height: 0; /* 1 */\n    overflow: visible; /* 2 */\n  }\n  \n  /**\n   * 1. Correct the inheritance and scaling of font size in all browsers.\n   * 2. Correct the odd `em` font sizing in all browsers.\n   */\n  \n  pre {\n    font-family: monospace, monospace; /* 1 */\n    font-size: 1em; /* 2 */\n  }\n  \n  /* Text-level semantics\n     ========================================================================== */\n  \n  /**\n   * Remove the gray background on active links in IE 10.\n   */\n  \n  a {\n    background-color: transparent;\n  }\n  \n  /**\n   * 1. Remove the bottom border in Chrome 57-\n   * 2. Add the correct text decoration in Chrome, Edge, IE, Opera, and Safari.\n   */\n  \n  abbr[title] {\n    border-bottom: none; /* 1 */\n    text-decoration: underline; /* 2 */\n    text-decoration: underline dotted; /* 2 */\n  }\n  \n  /**\n   * Add the correct font weight in Chrome, Edge, and Safari.\n   */\n  \n  b,\n  strong {\n    font-weight: bolder;\n  }\n  \n  /**\n   * 1. Correct the inheritance and scaling of font size in all browsers.\n   * 2. Correct the odd `em` font sizing in all browsers.\n   */\n  \n  code,\n  kbd,\n  samp {\n    font-family: monospace, monospace; /* 1 */\n    font-size: 1em; /* 2 */\n  }\n  \n  /**\n   * Add the correct font size in all browsers.\n   */\n  \n  small {\n    font-size: 80%;\n  }\n  \n  /**\n   * Prevent `sub` and `sup` elements from affecting the line height in\n   * all browsers.\n   */\n  \n  sub,\n  sup {\n    font-size: 75%;\n    line-height: 0;\n    position: relative;\n    vertical-align: baseline;\n  }\n  \n  sub {\n    bottom: -0.25em;\n  }\n  \n  sup {\n    top: -0.5em;\n  }\n  \n  /* Embedded content\n     ========================================================================== */\n  \n  /**\n   * Remove the border on images inside links in IE 10.\n   */\n  \n  img {\n    border-style: none;\n  }\n  \n  /* Forms\n     ========================================================================== */\n  \n  /**\n   * 1. Change the font styles in all browsers.\n   * 2. Remove the margin in Firefox and Safari.\n   */\n  \n  button,\n  input,\n  optgroup,\n  select,\n  textarea {\n    font-family: inherit; /* 1 */\n    font-size: 100%; /* 1 */\n    line-height: 1.15; /* 1 */\n    margin: 0; /* 2 */\n  }\n  \n  /**\n   * Show the overflow in IE.\n   * 1. Show the overflow in Edge.\n   */\n  \n  button,\n  input { /* 1 */\n    overflow: visible;\n  }\n  \n  /**\n   * Remove the inheritance of text transform in Edge, Firefox, and IE.\n   * 1. Remove the inheritance of text transform in Firefox.\n   */\n  \n  button,\n  select { /* 1 */\n    text-transform: none;\n  }\n  \n  /**\n   * Correct the inability to style clickable types in iOS and Safari.\n   */\n  \n  button,\n  [type=\"button\"],\n  [type=\"reset\"],\n  [type=\"submit\"] {\n    -webkit-appearance: button;\n  }\n  \n  /**\n   * Remove the inner border and padding in Firefox.\n   */\n  \n  button::-moz-focus-inner,\n  [type=\"button\"]::-moz-focus-inner,\n  [type=\"reset\"]::-moz-focus-inner,\n  [type=\"submit\"]::-moz-focus-inner {\n    border-style: none;\n    padding: 0;\n  }\n  \n  /**\n   * Restore the focus styles unset by the previous rule.\n   */\n  \n  button:-moz-focusring,\n  [type=\"button\"]:-moz-focusring,\n  [type=\"reset\"]:-moz-focusring,\n  [type=\"submit\"]:-moz-focusring {\n    outline: 1px dotted ButtonText;\n  }\n  \n  /**\n   * Correct the padding in Firefox.\n   */\n  \n  fieldset {\n    padding: 0.35em 0.75em 0.625em;\n  }\n  \n  /**\n   * 1. Correct the text wrapping in Edge and IE.\n   * 2. Correct the color inheritance from `fieldset` elements in IE.\n   * 3. Remove the padding so developers are not caught out when they zero out\n   *    `fieldset` elements in all browsers.\n   */\n  \n  legend {\n    box-sizing: border-box; /* 1 */\n    color: inherit; /* 2 */\n    display: table; /* 1 */\n    max-width: 100%; /* 1 */\n    padding: 0; /* 3 */\n    white-space: normal; /* 1 */\n  }\n  \n  /**\n   * Add the correct vertical alignment in Chrome, Firefox, and Opera.\n   */\n  \n  progress {\n    vertical-align: baseline;\n  }\n  \n  /**\n   * Remove the default vertical scrollbar in IE 10+.\n   */\n  \n  textarea {\n    overflow: auto;\n  }\n  \n  /**\n   * 1. Add the correct box sizing in IE 10.\n   * 2. Remove the padding in IE 10.\n   */\n  \n  [type=\"checkbox\"],\n  [type=\"radio\"] {\n    box-sizing: border-box; /* 1 */\n    padding: 0; /* 2 */\n  }\n  \n  /**\n   * Correct the cursor style of increment and decrement buttons in Chrome.\n   */\n  \n  [type=\"number\"]::-webkit-inner-spin-button,\n  [type=\"number\"]::-webkit-outer-spin-button {\n    height: auto;\n  }\n  \n  /**\n   * 1. Correct the odd appearance in Chrome and Safari.\n   * 2. Correct the outline style in Safari.\n   */\n  \n  [type=\"search\"] {\n    -webkit-appearance: textfield; /* 1 */\n    outline-offset: -2px; /* 2 */\n  }\n  \n  /**\n   * Remove the inner padding in Chrome and Safari on macOS.\n   */\n  \n  [type=\"search\"]::-webkit-search-decoration {\n    -webkit-appearance: none;\n  }\n  \n  /**\n   * 1. Correct the inability to style clickable types in iOS and Safari.\n   * 2. Change font properties to `inherit` in Safari.\n   */\n  \n  ::-webkit-file-upload-button {\n    -webkit-appearance: button; /* 1 */\n    font: inherit; /* 2 */\n  }\n  \n  /* Interactive\n     ========================================================================== */\n  \n  /*\n   * Add the correct display in Edge, IE 10+, and Firefox.\n   */\n  \n  details {\n    display: block;\n  }\n  \n  /*\n   * Add the correct display in all browsers.\n   */\n  \n  summary {\n    display: list-item;\n  }\n  \n  /* Misc\n     ========================================================================== */\n  \n  /**\n   * Add the correct display in IE 10+.\n   */\n  \n  template {\n    display: none;\n  }\n  \n  /**\n   * Add the correct display in IE 10.\n   */\n  \n  [hidden] {\n    display: none;\n  }\n  ","@use 'variables' as v;\n@use 'mixins' as m;\n\nhtml {\n    font-size: 62.5%;\n    box-sizing: border-box;\n    height: 100%;\n}\nbody {\n    min-height: 100%;\n    @include m.tablet {\n        height: 100%;\n    }\n    display: flex;\n    flex-direction: column;\n    background-color: v.$negro;\n    color: v.$blanco;\n    font-family: v.$fuente_principal;\n    font-size: 1.6rem;\n}\n*, *:before, *:after {\n    box-sizing: inherit;\n}\n\n.contenedor {\n    width: 95%;\n    max-width: 1200px;\n    margin: 0 auto;\n}\na {\n    text-decoration: none;\n}\n\nimg {\n    max-width: 100%;\n}\n","// Fuentes\n$fuente_principal: 'Poppins', sans-serif;\n\n// Tamaño de Media Queries\n$telefono: 480px;\n$tablet: 768px;\n$desktop: 1024px;\n\n// Colores\n$azul: #0da6f3;\n$rojo: #cb0000;\n$verde:#329f00;\n$negro: #1a1b15;\n\n$blanco: #FFFFFF;\n$gris: #e1e1e1;\n\n$separacion: 5rem;\n\n// Fuentes\n$delgada: 300;\n$regular : 400;\n$bold: 700;\n$black: 900","@use 'variables' as v;\n\nh1, h2, h3 {\n    font-family: v.$fuente_principal;\n    margin: 0 0 calc(v.$separacion / 2) 0 ;\n    font-weight: 900;\n    color: v.$blanco;\n    text-align: center;\n}\n\nh1 {\n    font-size: 4rem;\n}\nh2 {\n    font-size: 3.6rem;\n}\nh3 {\n    font-size: 3rem;\n    text-align: center;\n}\np {\n    color: v.$blanco;\n    font-size: 2rem;\n}\n\n.nombre-pagina {\n    text-align: center;\n    margin: 5rem 0;\n    font-weight: v.$bold;\n}\n\n.descripcion-pagina {\n    text-align: center;\n}","@use 'variables' as v;\n\n/** Media Queries **/\n@mixin telefono {\n    @media (min-width: v.$telefono) {\n        @content;\n    }\n}\n@mixin tablet {\n    @media (min-width: v.$tablet) {\n        @content;\n    }\n}\n@mixin desktop {\n    @media (min-width: v.$desktop) {\n        @content;\n    }\n}\n\n\n@mixin boton($bgColor, $colorTexto) {\n    background-color: $bgColor;\n    padding: 1.5rem 4rem;\n    color: $colorTexto;\n    margin-top: 2rem;\n    font-size: 2rem;\n    font-weight: 400;\n    display: inline-block;\n    font-weight: 700;\n    border: none;\n    transition-property: background-color;\n    transition-duration: .3s;\n    text-align: center;\n    display: block;\n    width: 100%;\n    margin: 5rem 0;\n\n    @include tablet {\n        width: auto;\n    }\n    &:hover {\n        background-color: darken( $bgColor, 10% );\n        cursor: pointer;\n    }\n}\n\n@mixin grid($columnas, $espaciado ) {\n    display: grid;\n    gap: $espaciado;\n    grid-template-columns: repeat($columnas, 1fr);\n}","@use 'base/variables' as v;\r\n@use 'base/mixins' as m;\r\n\r\n.contenedor-app {\r\n    @include m.tablet {\r\n        display: grid;\r\n        grid-template-columns: repeat(2, 1fr);\r\n        min-height: 100vh;\r\n    }\r\n\r\n    .imagen {\r\n        height: 20rem;\r\n        background-image: url('../img/1.jpg');\r\n        background-size: cover;\r\n        background-position: center center;\r\n        @include m.tablet {\r\n            height: auto;\r\n        }\r\n    }\r\n\r\n    .app {\r\n        width: 95%;\r\n        margin: 0 auto;\r\n        padding: 3rem 0;\r\n        @include m.tablet {\r\n            overflow: scroll;\r\n        }\r\n    }\r\n}\r\n\r\n.barra {\r\n    margin: v.$separacion 0;\r\n\r\n    @include m.tablet {\r\n        display: flex;\r\n        justify-content: space-between;\r\n        align-items: center;\r\n    }\r\n\r\n    .boton {\r\n        @include m.boton(v.$negro, v.$blanco);\r\n        margin: 0;\r\n    }\r\n}\r\n\r\n.barra-servicios {\r\n    margin-bottom: v.$separacion;\r\n\r\n    @include m.tablet {\r\n        display: flex;\r\n        justify-content: space-between;\r\n    }\r\n\r\n    .boton {\r\n        margin: 0 0 1rem 0;\r\n    }\r\n}",".seccion {\r\n    padding: 5rem 0;\r\n    display: none;\r\n\r\n    .text-center {\r\n        text-align: center;\r\n    }\r\n}\r\n\r\n.mostrar {\r\n    display: block;\r\n}\r\n\r\n.ocultar {\r\n    display: none;\r\n}","@use 'base/variables' as v;\r\n@use 'base/mixins' as m;\r\n\r\n.listado-servicios {\r\n    display: grid;\r\n    gap: 2rem;\r\n    @include m.tablet {\r\n        @include m.grid(2, 2rem);\r\n    }\r\n\r\n    .servicio {\r\n        background-color: v.$blanco;\r\n        padding: 3rem;\r\n        border-radius: 1rem;\r\n        transition-property: transform;\r\n        transition-duration: 300ms;\r\n        text-align: center;\r\n\r\n        &.seleccionado {\r\n            background-color: v.$azul;\r\n            p {\r\n                color: v.$blanco;\r\n            }\r\n        }\r\n\r\n        &:hover {\r\n            transform: scale(1.1);\r\n        }\r\n\r\n        p {\r\n            color: v.$negro;\r\n            margin: 0 0 calc(v.$separacion / 4) 0;\r\n        }\r\n\r\n        .precio-servicio {\r\n            color: v.$azul;\r\n            font-weight: v.$bold;\r\n            font-size: 3rem;\r\n            margin: 0;\r\n        }\r\n    }\r\n}","@use 'base/variables' as v;\r\n\r\n.contenido-resumen {\r\n    p {\r\n        margin-bottom: 1rem;\r\n    }\r\n\r\n    span {\r\n        color: v.$azul;\r\n        font-weight: v.$bold;\r\n        font-size: 2.4rem;\r\n    }\r\n}\r\n\r\n.contenedor-servicio {\r\n    padding: 3rem 0;\r\n    border-bottom: 1px solid v.$gris;\r\n\r\n    &:last-of-type {\r\n        margin-bottom: v.$separacion;\r\n    }\r\n}","@use 'base/variables' as v;\r\n\r\n.citas {\r\n    list-style: none;\r\n    padding: 0;\r\n\r\n    li {\r\n        padding: 1rem;\r\n        border-top: 1px solid v.$blanco;\r\n\r\n        p {\r\n            font-weight: v.$bold;\r\n            color: v.$azul;\r\n        }\r\n\r\n        span,\r\n        .servicio {\r\n            font-weight: v.$regular;\r\n            color: v.$blanco;\r\n        }\r\n    }\r\n}\r\n\r\n.servicios {\r\n    @extend .citas;\r\n\r\n    .acciones {\r\n        margin: 0;\r\n    }\r\n\r\n    .boton,\r\n    .boton-eliminar {\r\n        margin: 0;\r\n    }\r\n}","@use 'base/variables' as v;\r\n@use 'base/mixins' as m;\r\n\r\n.formulario {\r\n    margin-top: 5rem;\r\n    width: 100%;\r\n}\r\n\r\n.campo {\r\n    display: flex;\r\n    margin-bottom: 2rem;\r\n    align-items: center;\r\n\r\n    label {\r\n        flex: 0 0 10rem;\r\n    }\r\n\r\n    input {\r\n        flex: 1;\r\n        border: none;\r\n        padding: calc(v.$separacion / 4);\r\n        border-radius: 1rem;\r\n\r\n        &:disabled {\r\n            background-color: lighten(v.$negro, 30%);\r\n            color: v.$blanco;\r\n            cursor: not-allowed;\r\n        }\r\n    }\r\n}\r\n","@use 'base/variables' as v;\r\n@use 'base/mixins' as m;\r\n\r\n.boton {\r\n    @include m.boton(v.$azul, v.$blanco);\r\n}\r\n\r\n.boton-eliminar {\r\n    @include m.boton(v.$rojo, v.$blanco);\r\n}","@use 'base/variables' as v;\r\n@use 'base/mixins' as m;\r\n\r\n.acciones {\r\n    margin-top: v.$separacion;\r\n    @include m.tablet {\r\n        display: flex;\r\n        justify-content: space-between;\r\n        align-items: center;\r\n    }\r\n\r\n    a {\r\n        color: v.$blanco;\r\n        display: block;\r\n        margin-bottom: calc(v.$separacion / 2);\r\n        text-align: center;\r\n    }\r\n}","@use 'base/variables' as v;\r\n\r\n.alerta {\r\n    padding: calc(v.$separacion / 4);\r\n    color: v.$blanco;\r\n    width: 100%;\r\n    display: block;\r\n    margin-bottom: 2rem;\r\n    text-align: center;\r\n    font-weight: v.$bold;\r\n    text-transform: uppercase;\r\n\r\n    &.error {\r\n        background-color: v.$rojo;\r\n    }\r\n\r\n    &.exito {\r\n        background-color: v.$verde;\r\n    }\r\n}","@use 'base/variables' as v;\r\n@use 'base/mixins' as m;\r\n\r\n.tabs {\r\n    \r\n    @include m.tablet {\r\n        display: flex;\r\n        gap: 1rem;\r\n    }\r\n\r\n    button {\r\n        background-color: v.$azul;\r\n        border: none;\r\n        color: v.$blanco;\r\n        padding: 1rem;\r\n        display: block;\r\n        width: 100%;\r\n        margin-bottom: 1rem;\r\n        text-transform: uppercase;\r\n        font-weight: v.$bold;\r\n        transition: background-color 300ms ease;\r\n\r\n        &:hover {\r\n            cursor: pointer;\r\n            background-color: darken(v.$azul, 10%);\r\n        }\r\n\r\n        &.actual {\r\n            background-color: v.$blanco;\r\n            color: v.$azul;\r\n        }\r\n    }\r\n}","@use 'base/variables' as v;\r\n@use 'base/mixins' as m;\r\n\r\n.paginacion {\r\n    padding: v.$separacion 0;\r\n\r\n    @include m.telefono {\r\n        display: flex;\r\n        justify-content: space-between;\r\n    }\r\n\r\n    button {\r\n        margin: 0 0 1rem 0;\r\n    }\r\n}\r\n\r\n.ocultar {\r\n    visibility: hidden;\r\n}"]}
-</file>
-
-<file path="public/build/js/app.js">
-let paso=1;const pasoInicial=1,pasoFinal=3,cita={id:"",nombre:"",fecha:"",hora:"",servicios:[]};function iniciarApp(){mostrarSeccion(),tabs(),botonPaginador(),paginaSiguiente(),paginaAnterior(),consultarAPI(),idCliente(),nombreCliente(),seleccionarFecha(),seleccionarHora(),muestraResumen()}function mostrarSeccion(){const e=document.querySelector(".mostrar");e&&e.classList.remove("mostrar");const t=`#paso-${paso}`;document.querySelector(t).classList.add("mostrar");const o=document.querySelector(".actual");o&&o.classList.remove("actual");document.querySelector(`[data-paso="${paso}"]`).classList.add("actual")}function tabs(){document.querySelectorAll(".tabs button").forEach(e=>{e.addEventListener("click",e=>{paso=parseInt(e.target.dataset.paso),mostrarSeccion(),botonPaginador(),3===paso&&muestraResumen()})})}function botonPaginador(){const e=document.querySelector("#anterior"),t=document.querySelector("#siguiente");1===paso?(e.classList.add("ocultar"),t.classList.remove("ocultar")):3===paso?(t.classList.add("ocultar"),e.classList.remove("ocultar"),muestraResumen()):(e.classList.remove("ocultar"),t.classList.remove("ocultar")),mostrarSeccion()}function paginaAnterior(){document.querySelector("#anterior").addEventListener("click",function(){paso<=1||(paso--,botonPaginador())})}function paginaSiguiente(){document.querySelector("#siguiente").addEventListener("click",function(){paso>=3||(paso++,botonPaginador())})}async function consultarAPI(){try{const e="/api/servicios",t=await fetch(e);mostrarServicios(await t.json())}catch(e){console.log(e)}}function mostrarServicios(e){e.forEach(e=>{const{id:t,nombre:o,precio:n}=e,a=document.createElement("P");a.classList.add("nombre-servicio"),a.textContent=o;const c=document.createElement("P");c.classList.add("precio-servicio"),c.textContent=`$${n}`;const r=document.createElement("DIV");r.classList.add("servicio"),r.dataset.idServicio=t,r.onclick=function(){seleccionarServicio(e)},r.appendChild(a),r.appendChild(c),document.querySelector("#servicios").appendChild(r)})}function seleccionarServicio(e){const{id:t}=e,{servicios:o}=cita,n=document.querySelector(`[data-id-servicio="${t}"]`);o.some(e=>e.id===t)?(cita.servicios=o.filter(e=>e.id!==t),n.classList.remove("seleccionado")):(cita.servicios=[...o,e],n.classList.add("seleccionado")),console.log(cita)}function idCliente(){cita.id=document.querySelector("#id").value}function nombreCliente(){cita.nombre=document.querySelector("#nombre").value}function seleccionarFecha(){document.querySelector("#fecha").addEventListener("input",function(e){const t=new Date(e.target.value).getUTCDay();[0,6].includes(t)?(e.target.value="",mostrarAlerta("Fines de semana no permitidos","error",".formulario")):cita.fecha=e.target.value})}function seleccionarHora(){document.querySelector("#hora").addEventListener("input",function(e){const t=e.target.value.split(":")[0];t<10||t>18?(e.target.value="",mostrarAlerta("Hora no válida","error",".formulario")):cita.hora=e.target.value})}function mostrarAlerta(e,t,o,n=!0){const a=document.querySelector(".alerta");a&&a.remove();const c=document.createElement("DIV");c.textContent=e,c.classList.add("alerta"),c.classList.add(t);document.querySelector(o).appendChild(c),n&&setTimeout(()=>{c.remove()},3e3)}function muestraResumen(){const e=document.querySelector(".contenido-resumen");for(;e.firstChild;)e.removeChild(e.firstChild);if(Object.values(cita).includes("")||0===cita.servicios.length)return void mostrarAlerta("Faltan datos de la cita","error",".contenido-resumen",!1);const{nombre:t,fecha:o,hora:n,servicios:a}=cita,c=document.createElement("DIV");c.classList.add("servicios-resumen"),c.innerHTML='<h4 class="titulo-servicios">Servicios</h4>';const r=document.createElement("H3");r.textContent="Resumen de Servicios",e.appendChild(r),a.forEach(t=>{const{id:o,nombre:n,precio:a}=t,c=document.createElement("DIV");c.classList.add("contenedor-servicio");const r=document.createElement("P");r.textContent=n;const i=document.createElement("P");i.innerHTML=`<span>Precio:</span> $${a}`,c.appendChild(r),c.appendChild(i),e.appendChild(c)});const i=document.createElement("H3");i.textContent="Resumen de cita",e.appendChild(i);const s=document.createElement("P");s.innerHTML=`<span>Nombre:</span> ${t}`;const d=new Date(o+"T00:00:00").toLocaleDateString("es-MX",{weekday:"long",year:"numeric",month:"long",day:"numeric"}),l=document.createElement("P");l.innerHTML=`<span>Fecha:</span> ${d}`;const u=document.createElement("P");u.innerHTML=`<span>Hora:</span> ${n}`;const m=document.createElement("BUTTON");m.classList.add("boton"),m.textContent="Reservar cita",m.onclick=reservarCita,e.appendChild(s),e.appendChild(l),e.appendChild(u),e.appendChild(m)}async function reservarCita(){const{nombre:e,fecha:t,hora:o,servicios:n,id:a}=cita,c=n.map(e=>e.id),r=new FormData;r.append("fecha",t),r.append("hora",o),r.append("usuarioId",a),r.append("servicios",c);try{const e="/api/citas",t=await fetch(e,{method:"POST",body:r});(await t.json()).resultado&&Swal.fire({icon:"success",title:"Cita Creada",text:"Tu cita fue creada correctamente",confirmButtonText:"Ok"}).then(()=>{window.location.reload()})}catch(e){Swal.fire({icon:"error",title:"Error",text:"Hubo un error al crear la cita",confirmButtonText:"Ok"})}}document.addEventListener("DOMContentLoaded",function(){iniciarApp()});
-</file>
-
-<file path="public/build/js/buscador.js">
-function iniciarApp(){buscarPorFecha()}function buscarPorFecha(){document.querySelector("#fecha").addEventListener("input",function(n){const e=n.target.value;window.location=`?fecha=${e}`})}document.addEventListener("DOMContentLoaded",function(){iniciarApp()});
-</file>
-
-<file path="public/index.php">
-<?php 
-
-require_once __DIR__ . '/../includes/app.php';
-
-use Controllers\ServicioController;
-use Controllers\AdminController;
-use Controllers\APIController;
-use Controllers\LoginController;
-use Controllers\CitaController;
-use MVC\Router;
-$router = new Router();
-
-// Iniciar sesión
-$router->get('/', [LoginController::class, 'login']);
-$router->post('/', [LoginController::class, 'login']);
-$router->get('/logout', [LoginController::class, 'logout']);
-
-// Recuperar Password
-$router->get('/olvide', [LoginController::class, 'olvide']);
-$router->post('/olvide', [LoginController::class, 'olvide']);
-$router->get('/recuperar', [LoginController::class, 'recuperar']);
-$router->post('/recuperar', [LoginController::class, 'recuperar']);
-
-// Crear una nueva cuenta
-$router->get('/crear-cuenta', [LoginController::class, 'crear']);
-$router->post('/crear-cuenta', [LoginController::class, 'crear']);
-
-// Confirmar cuenta
-$router->get('/confirmar-cuenta', [LoginController::class, 'confirmar']);
-$router->get('/mensaje', [LoginController::class, 'mensaje']);
-
-// Área privada
-$router->get('/cita', [CitaController::class, 'index']);
-$router->get('/admin', [AdminController::class, 'index']);
-
-// API de servicios
-$router->get('/api/servicios', [APIController::class, 'index']);
-$router->post('/api/citas', [APIController::class, 'guardar']);
-$router->post('/api/eliminar', [APIController::class, 'eliminar']);
-
-// CRUD de servicios
-$router->get('/servicios', [ServicioController::class, 'index']);
-$router->get('/servicios/crear', [ServicioController::class, 'crear']);
-$router->post('/servicios/crear', [ServicioController::class, 'crear']);
-$router->get('/servicios/actualizar', [ServicioController::class, 'actualizar']);
-$router->post('/servicios/actualizar', [ServicioController::class, 'actualizar']);
-$router->post('/servicios/eliminar', [ServicioController::class, 'eliminar']);
-
-// Comprueba y valida las rutas, que existan y les asigna las funciones del Controlador
-$router->comprobarRutas();
-</file>
-
 <file path="Router.php">
 <?php
 
@@ -1302,359 +1229,6 @@ class Router
         include_once __DIR__ . "/views/$view.php";
         $contenido = ob_get_clean(); // Limpia el Buffer
         include_once __DIR__ . '/views/layout.php';
-    }
-}
-</file>
-
-<file path="src/js/app.js">
-let paso = 1;
-const pasoInicial = 1;
-const pasoFinal = 3;
-
-const cita = {
-    id: '',
-    nombre: '',
-    fecha: '',
-    hora: '',
-    servicios: []
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    iniciarApp();
-});
-
-function iniciarApp() {
-    mostrarSeccion(); // Muestra y oculta las secciones
-    tabs(); // Cambia el tab al hacer click
-    botonPaginador(); // Agrega o quita los botones de paginación
-    paginaSiguiente();
-    paginaAnterior();
-
-    consultarAPI(); // Consulta la API en el backend de PHP
-
-    idCliente(); // Agrega el id del cliente al objeto de cita
-    nombreCliente(); // Agrega el nombre del cliente al objeto de cita
-    seleccionarFecha(); // Agrega la fecha de la cita al objeto de cita
-    seleccionarHora(); // Agrega la hora de la cita al objeto de cita
-
-    muestraResumen(); // Muestra el resumen de la cita
-}
-
-function mostrarSeccion() {
-    // Ocultar la sección que tenga la clase de mostrar
-    const seccionAnterior = document.querySelector('.mostrar');
-    if (seccionAnterior) {
-        seccionAnterior.classList.remove('mostrar');
-    }
-
-    // Seleccionar la sección con el paso
-    const pasoSelector = `#paso-${paso}`;
-    const seccion = document.querySelector(pasoSelector);
-    seccion.classList.add('mostrar');
-
-    // Quitar la clase actual al tab anterior
-    const tabAnterior = document.querySelector('.actual');
-    if (tabAnterior) {
-        tabAnterior.classList.remove('actual');
-    }
-
-    // Agregar la clase actual al tab actual
-    const tab = document.querySelector(`[data-paso="${paso}"]`);
-    tab.classList.add('actual');
-}
-
-function tabs() {
-    const botones = document.querySelectorAll('.tabs button');
-
-    botones.forEach(boton => {
-        boton.addEventListener('click', (e) => {
-            paso = parseInt(e.target.dataset.paso);
-            mostrarSeccion();
-
-            botonPaginador();
-
-            if(paso === pasoFinal) {
-                muestraResumen();
-            }
-        });
-    });
-}
-
-function botonPaginador() {
-    const paginaAnterior = document.querySelector('#anterior');
-    const paginaSiguiente = document.querySelector('#siguiente');
-
-    if(paso === pasoInicial) {
-        paginaAnterior.classList.add('ocultar');
-        paginaSiguiente.classList.remove('ocultar');
-    } else if (paso === pasoFinal) {
-        paginaSiguiente.classList.add('ocultar');
-        paginaAnterior.classList.remove('ocultar');
-
-        muestraResumen();
-    } else {
-        paginaAnterior.classList.remove('ocultar');
-        paginaSiguiente.classList.remove('ocultar');
-    }
-
-    mostrarSeccion();
-}
-
-function paginaAnterior() {
-    const paginaAnterior = document.querySelector('#anterior');
-    paginaAnterior.addEventListener('click', function() {
-
-        if(paso <= pasoInicial) return;
-        paso--;
-
-        botonPaginador();
-    });
-}
-
-function paginaSiguiente() {
-    const paginaSiguiente = document.querySelector('#siguiente');
-    paginaSiguiente.addEventListener('click', function() {
-
-        if(paso >= pasoFinal) return;
-        paso++;
-
-        botonPaginador();
-    });
-}
-
- async  function consultarAPI() {
-
-    try {
-        const url = '/api/servicios';
-        const resultado = await fetch(url);
-        const servicios = await resultado.json();
-        mostrarServicios(servicios);
-    } catch (error) {
-        console.log(error);
-    }
-}
-
-function mostrarServicios(servicios) {
-    servicios.forEach(servicio => {
-        const { id, nombre, precio } = servicio;
-
-        const nombreServicio = document.createElement('P');
-        nombreServicio.classList.add('nombre-servicio');
-        nombreServicio.textContent = nombre;
-
-        const precioServicio = document.createElement('P');
-        precioServicio.classList.add('precio-servicio');
-        precioServicio.textContent = `$${precio}`;
-
-        const servicioDiv = document.createElement('DIV');
-        servicioDiv.classList.add('servicio');
-        servicioDiv.dataset.idServicio = id;
-        servicioDiv.onclick = function() {
-            seleccionarServicio(servicio);
-        }
-
-        servicioDiv.appendChild(nombreServicio);
-        servicioDiv.appendChild(precioServicio);
-        
-        document.querySelector('#servicios').appendChild(servicioDiv);
-    });
-}
-
-function seleccionarServicio(servicio) {
-    const { id } = servicio;
-    const { servicios } = cita;
-
-    // Identificar el servicio que se dio click
-    const divServicio = document.querySelector(`[data-id-servicio="${id}"]`);
-
-    // Comprobar si el servicio ya fue agregado
-    if(servicios.some(agregado => agregado.id === id)) {
-        // Eliminar el servicio
-        cita.servicios = servicios.filter(agregado => agregado.id !== id);
-        divServicio.classList.remove('seleccionado');
-    } else {
-        // Agregar el servicio
-        cita.servicios = [...servicios, servicio];
-        divServicio.classList.add('seleccionado');
-    }
-
-    console.log(cita);
-}
-
-function idCliente() {
-    cita.id = document.querySelector('#id').value;
-}
-
-function nombreCliente() {
-    cita.nombre = document.querySelector('#nombre').value;
-}
-
-function seleccionarFecha() {
-    const inputFecha = document.querySelector('#fecha');
-    inputFecha.addEventListener('input', function(e) {
-
-        const dia = new Date(e.target.value).getUTCDay();
-
-        if([0, 6].includes(dia)) {
-            e.target.value = '';
-            mostrarAlerta('Fines de semana no permitidos', 'error', '.formulario');
-        } else {
-            cita.fecha = e.target.value;
-        }
-    });
-}
-
-function seleccionarHora() {
-    const inputHora = document.querySelector('#hora');
-    inputHora.addEventListener('input', function(e) {
-        const horaCita = e.target.value;
-        const hora = horaCita.split(':')[0];
-        if(hora < 10 || hora > 18) {
-            e.target.value = '';
-            mostrarAlerta('Hora no válida', 'error', '.formulario');
-        } else {
-            cita.hora = e.target.value;
-        }
-    });
-}
-
-function mostrarAlerta(mensaje, tipo, elemento, desaparece = true) {
-
-    // Si ya hay una alerta, no crear otra
-    const alertaPrevia = document.querySelector('.alerta');
-    if(alertaPrevia) {
-        alertaPrevia.remove();
-    }
-
-    // Crear la alerta
-    const alerta = document.createElement('DIV');
-    alerta.textContent = mensaje;
-    alerta.classList.add('alerta');
-    alerta.classList.add(tipo);
-
-    const referencia = document.querySelector(elemento);
-    referencia.appendChild(alerta);
-
-    if(desaparece) {
-        // Eliminar la alerta después de 3 segundos
-        setTimeout(() => {
-            alerta.remove();
-        }, 3000);
-    }
-}
-
-function muestraResumen() {
-    const resumen = document.querySelector('.contenido-resumen');
-
-    // Limpiar el resumen previo
-    while(resumen.firstChild) {
-        resumen.removeChild(resumen.firstChild);
-    }
-
-    if(Object.values(cita).includes('') || cita.servicios.length === 0) {
-        mostrarAlerta('Faltan datos de la cita', 'error', '.contenido-resumen', false);
-        return;
-    }
-
-    // Formatear el div de resumen
-    const { nombre, fecha, hora, servicios } = cita;
-
-    const serviciosCliente = document.createElement('DIV');
-    serviciosCliente.classList.add('servicios-resumen');
-    serviciosCliente.innerHTML = '<h4 class="titulo-servicios">Servicios</h4>';
-
-    // Heading para servicios en el resumen
-    const headingServicios = document.createElement('H3');
-    headingServicios.textContent = 'Resumen de Servicios';
-    resumen.appendChild(headingServicios);
-
-
-    // Iterando y mostrando los servicios
-    servicios.forEach(servicio => {
-        const {id, nombre, precio} = servicio;
-        const contenedorServicio = document.createElement('DIV');
-        contenedorServicio.classList.add('contenedor-servicio');
-
-        const textoServicio = document.createElement('P');
-        textoServicio.textContent = nombre;
-
-        const precioServicio = document.createElement('P');
-        precioServicio.innerHTML = `<span>Precio:</span> $${precio}`;
-
-        contenedorServicio.appendChild(textoServicio);
-        contenedorServicio.appendChild(precioServicio);
-
-        resumen.appendChild(contenedorServicio);
-    });
-
-    // Heading para servicios en el resumen
-    const headingCita = document.createElement('H3');
-    headingCita.textContent = 'Resumen de cita';
-    resumen.appendChild(headingCita);
-
-    const nombreCliente = document.createElement('P');
-    nombreCliente.innerHTML = `<span>Nombre:</span> ${nombre}`;
-
-    // Formatear la fecha en español
-    const fechaObj = new Date(fecha + 'T00:00:00');
-    const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    const fechaFormateada = fechaObj.toLocaleDateString('es-MX', opciones);
-
-    const fechaCita = document.createElement('P');
-    fechaCita.innerHTML = `<span>Fecha:</span> ${fechaFormateada}`;
-
-    const horaCita = document.createElement('P');
-    horaCita.innerHTML = `<span>Hora:</span> ${hora}`;
-
-    // button para crear la cita
-    const botonReservar = document.createElement('BUTTON');
-    botonReservar.classList.add('boton');
-    botonReservar.textContent = 'Reservar cita';
-    botonReservar.onclick = reservarCita;
-
-    resumen.appendChild(nombreCliente);
-    resumen.appendChild(fechaCita);
-    resumen.appendChild(horaCita);
-
-    resumen.appendChild(botonReservar);
-}
-
-async function reservarCita() {
-    const { nombre, fecha, hora, servicios, id } = cita;
-    const idServicios = servicios.map(servicio => servicio.id);
-
-    const datos = new FormData();
-    datos.append('fecha', fecha);
-    datos.append('hora', hora);
-    datos.append('usuarioId', id);
-    datos.append('servicios', idServicios);
-
-    try {
-        const url = '/api/citas';
-        const respuesta = await fetch(url, {
-            method: 'POST',
-            body: datos
-        });
-
-        const resultado = await respuesta.json();
-
-        if(resultado.resultado) {
-            Swal.fire({
-                icon: 'success',
-                title: 'Cita Creada',
-                text: 'Tu cita fue creada correctamente',
-                confirmButtonText: 'Ok'
-            }).then(() => {
-                window.location.reload();
-            });
-        }
-    } catch (error) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Hubo un error al crear la cita',
-            confirmButtonText: 'Ok'
-        });
     }
 }
 </file>
@@ -1728,60 +1302,6 @@ img {
 @forward 'mixins';
 @forward 'globales';
 @forward 'tipografia';
-</file>
-
-<file path="src/scss/base/_mixins.scss">
-@use 'variables' as v;
-
-/** Media Queries **/
-@mixin telefono {
-    @media (min-width: v.$telefono) {
-        @content;
-    }
-}
-@mixin tablet {
-    @media (min-width: v.$tablet) {
-        @content;
-    }
-}
-@mixin desktop {
-    @media (min-width: v.$desktop) {
-        @content;
-    }
-}
-
-
-@mixin boton($bgColor, $colorTexto) {
-    background-color: $bgColor;
-    padding: 1.5rem 4rem;
-    color: $colorTexto;
-    margin-top: 2rem;
-    font-size: 2rem;
-    font-weight: 400;
-    display: inline-block;
-    font-weight: 700;
-    border: none;
-    transition-property: background-color;
-    transition-duration: .3s;
-    text-align: center;
-    display: block;
-    width: 100%;
-    margin: 5rem 0;
-
-    @include tablet {
-        width: auto;
-    }
-    &:hover {
-        background-color: darken( $bgColor, 10% );
-        cursor: pointer;
-    }
-}
-
-@mixin grid($columnas, $espaciado ) {
-    display: grid;
-    gap: $espaciado;
-    grid-template-columns: repeat($columnas, 1fr);
-}
 </file>
 
 <file path="src/scss/base/_normalize.scss">
@@ -2257,39 +1777,6 @@ $black: 900
 }
 </file>
 
-<file path="src/scss/componentes/_formulario.scss">
-@use 'base/variables' as v;
-@use 'base/mixins' as m;
-
-.formulario {
-    margin-top: 5rem;
-    width: 100%;
-}
-
-.campo {
-    display: flex;
-    margin-bottom: 2rem;
-    align-items: center;
-
-    label {
-        flex: 0 0 10rem;
-    }
-
-    input {
-        flex: 1;
-        border: none;
-        padding: calc(v.$separacion / 4);
-        border-radius: 1rem;
-
-        &:disabled {
-            background-color: lighten(v.$negro, 30%);
-            color: v.$blanco;
-            cursor: not-allowed;
-        }
-    }
-}
-</file>
-
 <file path="src/scss/componentes/_index.scss">
 @forward 'formulario';
 @forward 'botones';
@@ -2318,42 +1805,6 @@ $black: 900
 
 .ocultar {
     visibility: hidden;
-}
-</file>
-
-<file path="src/scss/componentes/_tabs.scss">
-@use 'base/variables' as v;
-@use 'base/mixins' as m;
-
-.tabs {
-    
-    @include m.tablet {
-        display: flex;
-        gap: 1rem;
-    }
-
-    button {
-        background-color: v.$azul;
-        border: none;
-        color: v.$blanco;
-        padding: 1rem;
-        display: block;
-        width: 100%;
-        margin-bottom: 1rem;
-        text-transform: uppercase;
-        font-weight: v.$bold;
-        transition: background-color 300ms ease;
-
-        &:hover {
-            cursor: pointer;
-            background-color: darken(v.$azul, 10%);
-        }
-
-        &.actual {
-            background-color: v.$blanco;
-            color: v.$azul;
-        }
-    }
 }
 </file>
 
@@ -2443,111 +1894,6 @@ $black: 900
 
     &:last-of-type {
         margin-bottom: v.$separacion;
-    }
-}
-</file>
-
-<file path="src/scss/layout/_servicios.scss">
-@use 'base/variables' as v;
-@use 'base/mixins' as m;
-
-.listado-servicios {
-    display: grid;
-    gap: 2rem;
-    @include m.tablet {
-        @include m.grid(2, 2rem);
-    }
-
-    .servicio {
-        background-color: v.$blanco;
-        padding: 3rem;
-        border-radius: 1rem;
-        transition-property: transform;
-        transition-duration: 300ms;
-        text-align: center;
-
-        &.seleccionado {
-            background-color: v.$azul;
-            p {
-                color: v.$blanco;
-            }
-        }
-
-        &:hover {
-            transform: scale(1.1);
-        }
-
-        p {
-            color: v.$negro;
-            margin: 0 0 calc(v.$separacion / 4) 0;
-        }
-
-        .precio-servicio {
-            color: v.$azul;
-            font-weight: v.$bold;
-            font-size: 3rem;
-            margin: 0;
-        }
-    }
-}
-</file>
-
-<file path="src/scss/layout/_UI.scss">
-@use 'base/variables' as v;
-@use 'base/mixins' as m;
-
-.contenedor-app {
-    @include m.tablet {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        min-height: 100vh;
-    }
-
-    .imagen {
-        height: 20rem;
-        background-image: url('../img/1.jpg');
-        background-size: cover;
-        background-position: center center;
-        @include m.tablet {
-            height: auto;
-        }
-    }
-
-    .app {
-        width: 95%;
-        margin: 0 auto;
-        padding: 3rem 0;
-        @include m.tablet {
-            overflow: scroll;
-        }
-    }
-}
-
-.barra {
-    margin: v.$separacion 0;
-
-    @include m.tablet {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .boton {
-        @include m.boton(v.$negro, v.$blanco);
-        margin: 0;
-    }
-}
-
-.barra-servicios {
-    margin-bottom: v.$separacion;
-
-    @include m.tablet {
-        display: flex;
-        justify-content: space-between;
-    }
-
-    .boton {
-        margin: 0 0 1rem 0;
     }
 }
 </file>
@@ -2728,78 +2074,84 @@ $black: 900
 </div>
 </file>
 
-<file path="views/cita/index.php">
-<h1 class="nombre-pagina">Crear Nueva Cita</h1>
-<p class="descripcion-pagina">ELige tus servicios y coloca tus datos</p>
+<file path="views/barberos/actualizar.php">
+<h1 class="nombre-pagina">Barberos</h1>
+<p class="descripcion-pagina">Actualizar Barbero</p>
 
 <?php include_once __DIR__ . '/../templates/barra.php'; ?>
 
-<div id="app">
-    <nav class="tabs">
-        <button class="actual" type="button" data-paso="1">Servicios</button>
-        <button type="button" data-paso="2">Información Cita</button>
-        <button type="button" data-paso="3">Resumen</button>
-    </nav>
+<form class="formulario" method="POST" action="/barberos/actualizar?id=<?php echo $barbero->id; ?>">
+    <?php include_once __DIR__ . '/formulario.php'; ?>
 
-    <div id="paso-1" class="seccion">
-        <h2>Servicios</h2>
-        <p class="text-center">Elige tus servicios a continuación</p>
-        <div id="servicios" class="listado-servicios"></div>
-    </div>
+    <input type="submit" value="Actualizar Barbero" class="boton">
+</form>
+</file>
 
-    <div id="paso-2" class="seccion">
-        <h2>Tus Datos y Cita</h2>
-        <p class="text-center">Coloca tus datos y fecha de tu cita</p>
+<file path="views/barberos/crear.php">
+<h1 class="nombre-pagina">Barberos</h1>
+<p class="descripcion-pagina">Agregar Nuevo Barbero</p>
 
-        <form class="formulario">
-            <div class="campo">
-                <label for="nombre">Nombre</label>
-                <input 
-                    id="nombre"
-                    type="text"
-                    placeholder="Tu Nombre"
-                    value="<?php echo $nombre; ?>"
-                    disabled
-                />
-            </div>
+<?php include_once __DIR__ . '/../templates/barra.php'; ?>
 
-            <div class="campo">
-                <label for="fecha">Fecha</label>
-                <input 
-                    id="fecha"
-                    type="date"
-                    min="<?php echo date('Y-m-d', strtotime('+1 day')); ?>"
-                />
-            </div>
+<form class="formulario" method="POST" action="/barberos/crear">
+    <?php include_once __DIR__ . '/formulario.php'; ?>
 
-            <div class="campo">
-                <label for="hora">Hora</label>
-                <input 
-                    id="hora"
-                    type="time"
-                />
-            </div>
-            <input type="hidden" id="id" value="<?php echo $id; ?>">
-        </form>
-    </div>
+    <input type="submit" value="Agregar Barbero" class="boton">
+</form>
+</file>
 
-    <div id="paso-3" class="seccion contenido-resumen">
-        <h2>Resumen de Cita</h2>
-        <p class="text-center">Verifica que la información sea correcta</p>
-    </div>
+<file path="views/barberos/formulario.php">
+<?php include_once __DIR__ . '/../templates/alertas.php'; ?>
 
-    <div class="paginacion">
-        <button id="anterior" class="boton">&laquo; Anterior</button>
-        <button id="siguiente" class="boton">Siguiente &raquo;</button>
-    </div>
+<div class="campo">
+    <label for="nombre">Nombre</label>
+    <input 
+        type="text"
+        id="nombre"
+        placeholder="Tu Nombre"
+        name="nombre"
+        value="<?php echo $barbero->nombre; ?>"
+    />
 </div>
 
-<?php 
-    $script = "
-        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
-        <script src='build/js/app.js'></script>
-    ";
-?>
+<div class="campo">
+    <label for="apellido">Apellido</label>
+    <input 
+        type="text"
+        id="apellido"
+        placeholder="Tu Apellido"
+        name="apellido"
+        value="<?php echo $barbero->apellido; ?>"
+    />
+</div>
+</file>
+
+<file path="views/barberos/index.php">
+<h1 class="nombre-pagina">Barberos</h1>
+<p class="descripcion-pagina">Administración de Barberos</p>
+
+<?php include_once __DIR__ . '/../templates/barra.php'; ?>
+
+<div class="barra-servicios">
+    <a href="/barberos/crear" class="boton">Nuevo Barbero</a>
+</div>
+
+<ul class="servicios">
+    <?php foreach($barberos as $barbero) { ?>
+        <li>
+            <p>Nombre: <span><?php echo $barbero->nombre . ' ' . $barbero->apellido; ?></span></p>
+
+            <div class="acciones">
+                <a class="boton" href="/barberos/actualizar?id=<?php echo $barbero->id; ?>">Actualizar</a>
+
+                <form action="/barberos/eliminar" method="POST">
+                    <input type="hidden" name="id" value="<?php echo $barbero->id; ?>">
+                    <input type="submit" value="Eliminar" class="boton-eliminar">
+                </form>
+            </div>
+        </li>
+    <?php } ?>
+</ul>
 </file>
 
 <file path="views/servicios/actualizar.php">
@@ -2856,32 +2208,6 @@ $black: 900
 </div>
 </file>
 
-<file path="views/servicios/index.php">
-<h1 class="nombre-pagina">Servicios</h1>
-<p class="descripcion-pagina">Administracion de Servicios</p>
-
-<?php include_once __DIR__ . '/../templates/barra.php'; ?>
-
-<ul class="servicios">
-    <?php foreach($servicios as $servicio) {?>
-        <li>
-            <p>Nombre: <span><?php echo $servicio->nombre; ?></span></p>
-            <p>Precio: <span>$<?php echo $servicio->precio; ?></span></p>
-
-            <div class="acciones">
-                <a class="boton" href="/servicios/actualizar?id=<?php echo $servicio->id; ?>">Actualizar</a>
-
-                <form action="/servicios/eliminar" method="POST">
-                    <input type="hidden" name="id" value="<?php echo $servicio->id; ?>">
-
-                    <input type="submit" value="Borrar" class="boton-eliminar">
-                </form>
-            </div>
-        </li>
-    <?php } ?>
-</ul>
-</file>
-
 <file path="views/templates/alertas.php">
 <?php
     foreach($alertas as $key => $mensajes):
@@ -2894,21 +2220,6 @@ $black: 900
         endforeach; 
     endforeach;
 ?>
-</file>
-
-<file path="views/templates/barra.php">
-<div class="barra">
-    <p>Hola: <span><?php echo $nombre; ?></span></p>
-    <a class="boton" href="/logout">Cerrar Sesión</a>
-</div>
-
-<?php if(isset($_SESSION['admin'])) { ?>
-    <div class="barra-servicios">
-        <a class="boton" href="/admin">Ver Citas</a>
-        <a class="boton" href="/servicios">Ver Servicios</a>
-        <a class="boton" href="/servicios/crear">Nuevo Servicio</a>
-    </div>    
-<?php } ?>
 </file>
 
 <file path="classes/Email.php">
@@ -2984,18 +2295,989 @@ class Email {
 }
 </file>
 
-<file path="includes/.env">
-DB_HOST=localhost
-DB_USER=root
-DB_PASS=Angeljose0078
-DB_NAME=appsalon
+<file path="controllers/AdminController.php">
+<?php
 
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=j.capellanherasme@gmail.com
-EMAIL_PASS="aoam iugx rdzw jpmh"
+namespace Controllers;
 
-APP_URL=http://localhost:3000
+use Model\AdminCita;
+use MVC\Router;
+
+class AdminController {
+    public static function index(Router $router) {
+
+        isAdmin();
+
+        $fecha = $_GET['fecha'] ?? date('Y-m-d');
+        $fechas = explode('-', $fecha);
+
+        if(!checkdate($fechas[1], $fechas[2], $fechas[0])) {
+            header('Location: /404');
+            exit;
+        }
+
+        $consulta  = " SELECT citas.id, citas.fecha, citas.hora, ";
+        $consulta .= " CONCAT(usuarios.nombre, ' ', usuarios.apellido) as cliente, ";
+        $consulta .= " usuarios.email, usuarios.telefono, ";
+        $consulta .= " CONCAT(barberos.nombre, ' ', barberos.apellido) as barbero, ";
+        $consulta .= " servicios.nombre as servicio, servicios.precio ";
+        $consulta .= " FROM citas ";
+        $consulta .= " LEFT OUTER JOIN usuarios ON citas.usuarioId = usuarios.id ";
+        $consulta .= " LEFT OUTER JOIN barberos ON citas.barberoId = barberos.id ";
+        $consulta .= " LEFT OUTER JOIN citasservicios ON citasservicios.citaId = citas.id ";
+        $consulta .= " LEFT OUTER JOIN servicios ON servicios.id = citasservicios.servicioId ";
+        $consulta .= " WHERE DATE(citas.fecha) = '{$fecha}' ";
+        $consulta .= " ORDER BY citas.id ASC ";
+        
+
+        $citas = AdminCita::SQL($consulta);
+
+        $router->render('admin/index', [
+            'nombre' => $_SESSION['nombre'],
+            'citas' => $citas,
+            'fecha' => $fecha
+        ]);
+    }
+}
+</file>
+
+<file path="controllers/CitaController.php">
+<?php
+
+namespace Controllers;
+
+use Model\Barbero;
+use MVC\Router;
+
+class CitaController {
+
+    public static function index(Router $router) { 
+
+        isAuth();
+        $barberos = Barbero::all();
+
+        $router->render('cita/index', [
+            'nombre' => $_SESSION['nombre'],
+            'id' => $_SESSION['id'],
+            'barberos' => $barberos
+        ]);
+    }
+}
+</file>
+
+<file path="models/AdminCita.php">
+<?php
+
+namespace Model;
+
+class AdminCita extends ActiveRecord {
+    protected static $tabla = 'citas';
+    protected static $columnasDB = ['id', 'hora', 'cliente', 'email', 'telefono', 'barbero', 'servicio', 'precio'];
+
+    public $id;
+    public $hora;
+    public $cliente;
+    public $email;
+    public $telefono;
+    public $barbero;
+    public $servicio;
+    public $precio;
+
+    public function __construct($args = []) {
+        $this->id = $args['id'] ?? null;
+        $this->hora = $args['hora'] ?? '';
+        $this->cliente = $args['cliente'] ?? '';
+        $this->email = $args['email'] ?? '';
+        $this->telefono = $args['telefono'] ?? '';
+        $this->barbero = $args['barbero'] ?? '';
+        $this->servicio = $args['servicio'] ?? '';
+        $this->precio = $args['precio'] ?? '';
+    }
+}
+</file>
+
+<file path="models/Cita.php">
+<?php
+
+namespace Model;
+
+class Cita extends ActiveRecord {
+    protected static $tabla = 'citas';
+    protected static $columnasDB = ['id', 'usuarioId', 'barberoId', 'fecha', 'hora'];
+
+    public $id;
+    public $usuarioId;
+    public $barberoId;
+    public $fecha;
+    public $hora;
+
+    public function __construct($args = []) {
+        $this->id = $args['id'] ?? null;
+        $this->usuarioId = $args['usuarioId'] ?? '';
+        $this->barberoId = $args['barberoId'] ?? '';
+        $this->fecha = $args['fecha'] ?? '';
+        $this->hora = $args['hora'] ?? '';
+    }
+}
+</file>
+
+<file path="public/index.php">
+<?php 
+
+require_once __DIR__ . '/../includes/app.php';
+
+use Controllers\ServicioController;
+use Controllers\AdminController;
+use Controllers\APIController;
+use Controllers\LoginController;
+use Controllers\CitaController;
+use Controllers\BarberoController;
+use MVC\Router;
+$router = new Router();
+
+// Iniciar sesión
+$router->get('/', [LoginController::class, 'login']);
+$router->post('/', [LoginController::class, 'login']);
+$router->get('/logout', [LoginController::class, 'logout']);
+
+// Recuperar Password
+$router->get('/olvide', [LoginController::class, 'olvide']);
+$router->post('/olvide', [LoginController::class, 'olvide']);
+$router->get('/recuperar', [LoginController::class, 'recuperar']);
+$router->post('/recuperar', [LoginController::class, 'recuperar']);
+
+// Crear una nueva cuenta
+$router->get('/crear-cuenta', [LoginController::class, 'crear']);
+$router->post('/crear-cuenta', [LoginController::class, 'crear']);
+
+// Confirmar cuenta
+$router->get('/confirmar-cuenta', [LoginController::class, 'confirmar']);
+$router->get('/mensaje', [LoginController::class, 'mensaje']);
+
+// Área privada
+$router->get('/cita', [CitaController::class, 'index']);
+$router->get('/admin', [AdminController::class, 'index']);
+
+// API de servicios
+$router->get('/api/servicios', [APIController::class, 'index']);
+$router->post('/api/citas', [APIController::class, 'guardar']);
+$router->post('/api/eliminar', [APIController::class, 'eliminar']);
+
+// CRUD de servicios
+$router->get('/servicios', [ServicioController::class, 'index']);
+$router->get('/servicios/crear', [ServicioController::class, 'crear']);
+$router->post('/servicios/crear', [ServicioController::class, 'crear']);
+$router->get('/servicios/actualizar', [ServicioController::class, 'actualizar']);
+$router->post('/servicios/actualizar', [ServicioController::class, 'actualizar']);
+$router->post('/servicios/eliminar', [ServicioController::class, 'eliminar']);
+
+// CRUD de barberos
+$router->get('/barberos', [BarberoController::class, 'index']);
+$router->get('/barberos/crear', [BarberoController::class, 'crear']);
+$router->post('/barberos/crear', [BarberoController::class, 'crear']);
+$router->get('/barberos/actualizar', [BarberoController::class, 'actualizar']);
+$router->post('/barberos/actualizar', [BarberoController::class, 'actualizar']);
+$router->post('/barberos/eliminar', [BarberoController::class, 'eliminar']);
+
+// Comprueba y valida las rutas, que existan y les asigna las funciones del Controlador
+$router->comprobarRutas();
+</file>
+
+<file path="src/js/app.js">
+let paso = 1;
+const pasoInicial = 1;
+const pasoFinal = 4;
+
+const cita = {
+    id: '',
+    nombre: '',
+    fecha: '',
+    hora: '',
+    barberoId: '',
+    servicios: []
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    iniciarApp();
+});
+
+function iniciarApp() {
+    mostrarSeccion(); // Muestra y oculta las secciones
+    tabs(); // Cambia el tab al hacer click
+    botonPaginador(); // Agrega o quita los botones de paginación
+    paginaSiguiente();
+    paginaAnterior();
+
+    consultarAPI(); // Consulta la API en el backend de PHP
+
+    idCliente(); // Agrega el id del cliente al objeto de cita
+    nombreCliente(); // Agrega el nombre del cliente al objeto de cita
+    seleccionarFecha(); // Agrega la fecha de la cita al objeto de cita
+    seleccionarHora(); // Agrega la hora de la cita al objeto de cita
+
+    muestraResumen(); // Muestra el resumen de la cita
+    seleccionarBarbero(); // Agrega el barbero seleccionado al objeto de cita
+}
+
+function mostrarSeccion() {
+    // Ocultar la sección que tenga la clase de mostrar
+    const seccionAnterior = document.querySelector('.mostrar');
+    if (seccionAnterior) {
+        seccionAnterior.classList.remove('mostrar');
+    }
+
+    // Seleccionar la sección con el paso
+    const pasoSelector = `#paso-${paso}`;
+    const seccion = document.querySelector(pasoSelector);
+    seccion.classList.add('mostrar');
+
+    // Quitar la clase actual al tab anterior
+    const tabAnterior = document.querySelector('.actual');
+    if (tabAnterior) {
+        tabAnterior.classList.remove('actual');
+    }
+
+    // Agregar la clase actual al tab actual
+    const tab = document.querySelector(`[data-paso="${paso}"]`);
+    tab.classList.add('actual');
+}
+
+function tabs() {
+    const botones = document.querySelectorAll('.tabs button');
+
+    botones.forEach(boton => {
+        boton.addEventListener('click', (e) => {
+            paso = parseInt(e.target.dataset.paso);
+            mostrarSeccion();
+
+            botonPaginador();
+
+            if(paso === pasoFinal) {
+                muestraResumen();
+            }
+        });
+    });
+}
+
+function botonPaginador() {
+    const paginaAnterior = document.querySelector('#anterior');
+    const paginaSiguiente = document.querySelector('#siguiente');
+
+    if(paso === pasoInicial) {
+        paginaAnterior.classList.add('ocultar');
+        paginaSiguiente.classList.remove('ocultar');
+    } else if (paso === pasoFinal) {
+        paginaSiguiente.classList.add('ocultar');
+        paginaAnterior.classList.remove('ocultar');
+
+        muestraResumen();
+    } else {
+        paginaAnterior.classList.remove('ocultar');
+        paginaSiguiente.classList.remove('ocultar');
+    }
+
+    mostrarSeccion();
+}
+
+function paginaAnterior() {
+    const paginaAnterior = document.querySelector('#anterior');
+    paginaAnterior.addEventListener('click', function() {
+
+        if(paso <= pasoInicial) return;
+        paso--;
+
+        botonPaginador();
+    });
+}
+
+function paginaSiguiente() {
+    const paginaSiguiente = document.querySelector('#siguiente');
+    paginaSiguiente.addEventListener('click', function() {
+
+        if(paso >= pasoFinal) return;
+        paso++;
+
+        botonPaginador();
+    });
+}
+
+ async  function consultarAPI() {
+
+    try {
+        const url = '/api/servicios';
+        const resultado = await fetch(url);
+        const servicios = await resultado.json();
+        mostrarServicios(servicios);
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+function mostrarServicios(servicios) {
+    servicios.forEach(servicio => {
+        const { id, nombre, precio } = servicio;
+
+        const nombreServicio = document.createElement('P');
+        nombreServicio.classList.add('nombre-servicio');
+        nombreServicio.textContent = nombre;
+
+        const precioServicio = document.createElement('P');
+        precioServicio.classList.add('precio-servicio');
+        precioServicio.textContent = `$${precio}`;
+
+        const servicioDiv = document.createElement('DIV');
+        servicioDiv.classList.add('servicio');
+        servicioDiv.dataset.idServicio = id;
+        servicioDiv.onclick = function() {
+            seleccionarServicio(servicio);
+        }
+
+        servicioDiv.appendChild(nombreServicio);
+        servicioDiv.appendChild(precioServicio);
+        
+        document.querySelector('#servicios').appendChild(servicioDiv);
+    });
+}
+
+function seleccionarServicio(servicio) {
+    const { id } = servicio;
+    const { servicios } = cita;
+
+    // Identificar el servicio que se dio click
+    const divServicio = document.querySelector(`[data-id-servicio="${id}"]`);
+
+    // Comprobar si el servicio ya fue agregado
+    if(servicios.some(agregado => agregado.id === id)) {
+        // Eliminar el servicio
+        cita.servicios = servicios.filter(agregado => agregado.id !== id);
+        divServicio.classList.remove('seleccionado');
+    } else {
+        // Agregar el servicio
+        cita.servicios = [...servicios, servicio];
+        divServicio.classList.add('seleccionado');
+    }
+
+    console.log(cita);
+}
+
+function idCliente() {
+    cita.id = document.querySelector('#id').value;
+}
+
+function nombreCliente() {
+    cita.nombre = document.querySelector('#nombre').value;
+}
+
+function seleccionarFecha() {
+    const inputFecha = document.querySelector('#fecha');
+    inputFecha.addEventListener('input', function(e) {
+
+        const dia = new Date(e.target.value).getUTCDay();
+
+        if([0, 6].includes(dia)) {
+            e.target.value = '';
+            mostrarAlerta('Fines de semana no permitidos', 'error', '.formulario');
+        } else {
+            cita.fecha = e.target.value;
+        }
+    });
+}
+
+function seleccionarHora() {
+    const inputHora = document.querySelector('#hora');
+    inputHora.addEventListener('input', function(e) {
+        const horaCita = e.target.value;
+        const hora = horaCita.split(':')[0];
+        if(hora < 10 || hora > 18) {
+            e.target.value = '';
+            mostrarAlerta('Hora no válida', 'error', '.formulario');
+        } else {
+            cita.hora = e.target.value;
+        }
+    });
+}
+
+function mostrarAlerta(mensaje, tipo, elemento, desaparece = true) {
+
+    // Si ya hay una alerta, no crear otra
+    const alertaPrevia = document.querySelector('.alerta');
+    if(alertaPrevia) {
+        alertaPrevia.remove();
+    }
+
+    // Crear la alerta
+    const alerta = document.createElement('DIV');
+    alerta.textContent = mensaje;
+    alerta.classList.add('alerta');
+    alerta.classList.add(tipo);
+
+    const referencia = document.querySelector(elemento);
+    referencia.appendChild(alerta);
+
+    if(desaparece) {
+        // Eliminar la alerta después de 3 segundos
+        setTimeout(() => {
+            alerta.remove();
+        }, 3000);
+    }
+}
+
+function muestraResumen() {
+    const resumen = document.querySelector('.contenido-resumen');
+
+    // Limpiar el resumen previo
+    while(resumen.firstChild) {
+        resumen.removeChild(resumen.firstChild);
+    }
+
+    if(Object.values(cita).includes('') || cita.servicios.length === 0) {
+        mostrarAlerta('Faltan datos de la cita', 'error', '.contenido-resumen', false);
+        return;
+    }
+
+    const { nombre, fecha, hora, servicios } = cita;
+
+    // Heading servicios
+    const headingServicios = document.createElement('H3');
+    headingServicios.textContent = 'Resumen de Servicios';
+    resumen.appendChild(headingServicios);
+
+    // Iterando y mostrando los servicios
+    servicios.forEach(servicio => {
+        const { nombre, precio } = servicio;
+        const contenedorServicio = document.createElement('DIV');
+        contenedorServicio.classList.add('contenedor-servicio');
+
+        const textoServicio = document.createElement('P');
+        textoServicio.textContent = nombre;
+
+        const precioServicio = document.createElement('P');
+        precioServicio.innerHTML = `<span>Precio:</span> $${precio}`;
+
+        contenedorServicio.appendChild(textoServicio);
+        contenedorServicio.appendChild(precioServicio);
+        resumen.appendChild(contenedorServicio);
+    });
+
+    // Heading cita
+    const headingCita = document.createElement('H3');
+    headingCita.textContent = 'Resumen de Cita';
+    resumen.appendChild(headingCita);
+
+    // Barbero
+    const barberoSeleccionado = document.querySelector(`.barbero[data-id-barbero="${cita.barberoId}"]`);
+    const nombreBarbero = barberoSeleccionado ? barberoSeleccionado.querySelector('p').textContent : '';
+    const barbero = document.createElement('P');
+    barbero.innerHTML = `<span>Barbero:</span> ${nombreBarbero}`;
+
+    // Nombre
+    const nombreCliente = document.createElement('P');
+    nombreCliente.innerHTML = `<span>Nombre:</span> ${nombre}`;
+
+    // Fecha
+    const fechaObj = new Date(fecha + 'T00:00:00');
+    const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const fechaFormateada = fechaObj.toLocaleDateString('es-MX', opciones);
+    const fechaCita = document.createElement('P');
+    fechaCita.innerHTML = `<span>Fecha:</span> ${fechaFormateada}`;
+
+    // Hora
+    const horaCita = document.createElement('P');
+    horaCita.innerHTML = `<span>Hora:</span> ${hora}`;
+
+    // Botón reservar
+    const botonReservar = document.createElement('BUTTON');
+    botonReservar.classList.add('boton');
+    botonReservar.textContent = 'Reservar Cita';
+    botonReservar.onclick = reservarCita;
+
+    resumen.appendChild(barbero);
+    resumen.appendChild(nombreCliente);
+    resumen.appendChild(fechaCita);
+    resumen.appendChild(horaCita);
+    resumen.appendChild(botonReservar);
+}
+
+async function reservarCita() {
+    const { nombre, fecha, hora, servicios, id, barberoId } = cita;
+    const idServicios = servicios.map(servicio => servicio.id);
+
+    const datos = new FormData();
+    datos.append('fecha', fecha);
+    datos.append('hora', hora);
+    datos.append('usuarioId', id);
+    datos.append('servicios', idServicios);
+    datos.append('barberoId', barberoId);
+
+    try {
+        const url = '/api/citas';
+        const respuesta = await fetch(url, {
+            method: 'POST',
+            body: datos
+        });
+
+        const resultado = await respuesta.json();
+
+        if(resultado.resultado) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Cita Creada',
+                text: 'Tu cita fue creada correctamente',
+                confirmButtonText: 'Ok'
+            }).then(() => {
+                window.location.reload();
+            });
+        }
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Hubo un error al crear la cita',
+            confirmButtonText: 'Ok'
+        });
+    }
+}
+
+function seleccionarBarbero() {
+    const barberos = document.querySelectorAll('.barbero');
+    barberos.forEach(barbero => {
+        barbero.addEventListener('click', function() {
+            // Quitar selección anterior
+            barberos.forEach(b => b.classList.remove('seleccionado'));
+            // Seleccionar el actual
+            this.classList.add('seleccionado');
+            cita.barberoId = this.dataset.idBarbero;
+        });
+    });
+}
+</file>
+
+<file path="src/scss/base/_mixins.scss">
+@use 'variables' as v;
+@use 'sass:color';
+
+/** Media Queries **/
+@mixin telefono {
+    @media (min-width: v.$telefono) {
+        @content;
+    }
+}
+@mixin tablet {
+    @media (min-width: v.$tablet) {
+        @content;
+    }
+}
+@mixin desktop {
+    @media (min-width: v.$desktop) {
+        @content;
+    }
+}
+
+
+@mixin boton($bgColor, $colorTexto) {
+    background-color: $bgColor;
+    padding: 1.5rem 4rem;
+    color: $colorTexto;
+    margin-top: 2rem;
+    font-size: 2rem;
+    font-weight: 400;
+    display: inline-block;
+    font-weight: 700;
+    border: none;
+    transition-property: background-color;
+    transition-duration: .3s;
+    text-align: center;
+    display: block;
+    width: 100%;
+    margin: 5rem 0;
+
+    @include tablet {
+        width: auto;
+    }
+    &:hover {
+        background-color: darken( $bgColor, 10% );
+        cursor: pointer;
+    }
+}
+
+@mixin grid($columnas, $espaciado ) {
+    display: grid;
+    gap: $espaciado;
+    grid-template-columns: repeat($columnas, 1fr);
+}
+</file>
+
+<file path="src/scss/componentes/_formulario.scss">
+@use 'base/variables' as v;
+@use 'base/mixins' as m;
+@use 'sass:color';
+
+.formulario {
+    margin-top: 5rem;
+    width: 100%;
+}
+
+.campo {
+    display: flex;
+    margin-bottom: 2rem;
+    align-items: center;
+
+    label {
+        flex: 0 0 10rem;
+    }
+
+    input {
+        flex: 1;
+        border: none;
+        padding: calc(v.$separacion / 4);
+        border-radius: 1rem;
+
+        &:disabled {
+            background-color: color.adjust(v.$negro, $lightness: 30%);
+            color: v.$blanco;
+            cursor: not-allowed;
+        }
+    }
+}
+</file>
+
+<file path="src/scss/componentes/_tabs.scss">
+@use 'base/variables' as v;
+@use 'base/mixins' as m;
+@use 'sass:color';
+
+.tabs {
+    @include m.tablet {
+        display: flex;
+        gap: 1rem;
+    }
+
+    button {
+        background-color: v.$azul;
+        border: none;
+        color: v.$blanco;
+        padding: 1rem;
+        display: block;
+        width: 100%;
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+        font-weight: v.$bold;
+        transition: background-color 300ms ease;
+
+        &:hover {
+            cursor: pointer;
+            background-color: color.adjust(v.$azul, $lightness: -10%);
+        }
+
+        &.actual {
+            background-color: v.$blanco;
+            color: v.$azul;
+        }
+    }
+}
+</file>
+
+<file path="src/scss/layout/_servicios.scss">
+@use 'base/variables' as v;
+@use 'base/mixins' as m;
+
+.listado-servicios {
+    display: grid;
+    gap: 2rem;
+    @include m.tablet {
+        @include m.grid(2, 2rem);
+    }
+
+    .servicio {
+        background-color: v.$blanco;
+        padding: 3rem;
+        border-radius: 1rem;
+        transition-property: transform, background-color;
+        transition-duration: 300ms;
+        text-align: center;
+        cursor: pointer;
+
+        &.seleccionado {
+            background-color: v.$azul;
+            p {
+                color: v.$blanco;
+            }
+            .precio-servicio {
+                color: v.$blanco;
+            }
+        }
+
+        &:hover {
+            transform: scale(1.1);
+        }
+
+        p {
+            color: v.$negro;
+            margin: 0 0 calc(v.$separacion / 4) 0;
+        }
+
+        .precio-servicio {
+            color: v.$azul;
+            font-weight: v.$bold;
+            font-size: 3rem;
+            margin: 0;
+        }
+    }
+}
+
+.listado-barberos {
+    display: grid;
+    gap: 2rem;
+    @include m.tablet {
+        @include m.grid(3, 2rem);
+    }
+
+    .barbero {
+        background-color: v.$blanco;
+        padding: 3rem;
+        border-radius: 1rem;
+        text-align: center;
+        cursor: pointer;
+        transition-property: transform, background-color;
+        transition-duration: 300ms;
+
+        &.seleccionado {
+            background-color: v.$azul;
+            p {
+                color: v.$blanco;
+            }
+        }
+
+        &:hover {
+            transform: scale(1.1);
+        }
+
+        p {
+            color: v.$negro;
+            font-weight: v.$bold;
+            font-size: 2rem;
+            margin: 0;
+        }
+    }
+}
+</file>
+
+<file path="src/scss/layout/_UI.scss">
+@use 'base/variables' as v;
+@use 'base/mixins' as m;
+
+.contenedor-app {
+    @include m.tablet {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        min-height: 100vh;
+    }
+
+    .imagen {
+        height: 20rem;
+        background-image: url('../img/1.jpg');
+        background-size: cover;
+        background-position: center center;
+        @include m.tablet {
+            height: auto;
+        }
+    }
+
+    .app {
+        width: 95%;
+        margin: 0 auto;
+        padding: 3rem 0;
+        @include m.tablet {
+            overflow: scroll;
+        }
+    }
+}
+
+.barra {
+    margin: v.$separacion 0;
+
+    @include m.tablet {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .boton {
+        @include m.boton(v.$negro, v.$blanco);
+        margin: 0;
+    }
+}
+
+.barra-servicios {
+    margin-bottom: v.$separacion;
+
+    @include m.tablet {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .boton {
+        margin: 0 0 1rem 0;
+    }
+}
+</file>
+
+<file path="views/cita/index.php">
+<h1 class="nombre-pagina">Crear Nueva Cita</h1>
+<p class="descripcion-pagina">ELige tus servicios y coloca tus datos</p>
+
+<?php include_once __DIR__ . '/../templates/barra.php'; ?>
+
+<div id="app">
+    <nav class="tabs">
+        <button class="actual" type="button" data-paso="1">Servicios</button>
+        <button type="button" data-paso="2">Barbero</button>
+        <button type="button" data-paso="3">Información Cita</button>
+        <button type="button" data-paso="4">Resumen</button>
+    </nav>
+
+    <div id="paso-1" class="seccion">
+        <h2>Servicios</h2>
+        <p class="text-center">Elige tus servicios a continuación</p>
+        <div id="servicios" class="listado-servicios"></div>
+    </div>
+
+    <div id="paso-2" class="seccion">
+        <h2>Barbero</h2>
+        <p class="text-center">Elige tu barbero a continuación</p>
+        <div class="listado-barberos">
+            <?php foreach($barberos as $barbero) { ?>
+                <div class="barbero" data-id-barbero="<?php echo $barbero->id; ?>">
+                    <p><?php echo $barbero->nombre . ' ' . $barbero->apellido; ?></p>
+                </div>
+            <?php } ?>
+        </div>
+    </div>
+
+    <div id="paso-3" class="seccion">
+        <h2>Tus Datos y Cita</h2>
+        <p class="text-center">Coloca tus datos y fecha de tu cita</p>
+
+        <form class="formulario">
+            <div class="campo">
+                <label for="nombre">Nombre</label>
+                <input 
+                    id="nombre"
+                    type="text"
+                    placeholder="Tu Nombre"
+                    value="<?php echo $nombre; ?>"
+                    disabled
+                />
+            </div>
+
+            <div class="campo">
+                <label for="fecha">Fecha</label>
+                <input 
+                    id="fecha"
+                    type="date"
+                    min="<?php echo date('Y-m-d', strtotime('+1 day')); ?>"
+                />
+            </div>
+
+            <div class="campo">
+                <label for="hora">Hora</label>
+                <input 
+                    id="hora"
+                    type="time"
+                />
+            </div>
+            <input type="hidden" id="id" value="<?php echo $id; ?>">
+        </form>
+    </div>
+
+    <div id="paso-4" class="seccion">
+        <h2>Resumen de Cita</h2>
+        <p class="text-center">Verifica que la información sea correcta</p>
+        <div class="contenido-resumen"></div>
+    </div>
+
+    <div class="paginacion">
+        <button id="anterior" class="boton">&laquo; Anterior</button>
+        <button id="siguiente" class="boton">Siguiente &raquo;</button>
+    </div>
+</div>
+
+<?php 
+    $script = "
+        <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+        <script src='build/js/app.js'></script>
+    ";
+?>
+</file>
+
+<file path="views/layout.php">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Salón</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;700;900&display=swap" rel="stylesheet"> 
+    <link rel="stylesheet" href="/build/css/app.css">
+</head>
+<body>
+    <div class="contenedor-app">
+        <div class="imagen"></div>
+        <div class="app">
+            <?php echo $contenido; ?>
+        </div>
+    </div>
+
+    <?php echo $script ?? ''; ?>
+</body>
+</html>
+</file>
+
+<file path="views/servicios/index.php">
+<h1 class="nombre-pagina">Servicios</h1>
+<p class="descripcion-pagina">Administracion de Servicios</p>
+
+<?php include_once __DIR__ . '/../templates/barra.php'; ?>
+
+<div class="barra-servicios">
+    <a href="/servicios/crear" class="boton">Nuevo Servicio</a>
+</div>
+
+<ul class="servicios">
+    <?php foreach($servicios as $servicio) {?>
+        <li>
+            <p>Nombre: <span><?php echo $servicio->nombre; ?></span></p>
+            <p>Precio: <span>$<?php echo $servicio->precio; ?></span></p>
+
+            <div class="acciones">
+                <a class="boton" href="/servicios/actualizar?id=<?php echo $servicio->id; ?>">Actualizar</a>
+
+                <form action="/servicios/eliminar" method="POST">
+                    <input type="hidden" name="id" value="<?php echo $servicio->id; ?>">
+
+                    <input type="submit" value="Borrar" class="boton-eliminar">
+                </form>
+            </div>
+        </li>
+    <?php } ?>
+</ul>
+</file>
+
+<file path="views/templates/barra.php">
+<div class="barra">
+    <p>Hola: <span><?php echo $nombre; ?></span></p>
+    <a class="boton" href="/logout">Cerrar Sesión</a>
+</div>
+
+<?php if(isset($_SESSION['admin'])) { ?>
+    <div class="barra-servicios">
+        <a class="boton" href="/admin">Ver Citas</a>
+        <a class="boton" href="/servicios">Ver Servicios</a>
+        <a class="boton" href="/barberos">Ver Barberos</a>
+    </div>    
+<?php } ?>
 </file>
 
 <file path="views/admin/index.php">
@@ -3037,6 +3319,7 @@ APP_URL=http://localhost:3000
                     <p>Cliente: <span><?php echo $cita->cliente; ?></span></p>
                     <p>Hora: <span><?php echo $cita->hora; ?></span></p>
                     <p>Teléfono: <span><?php echo $cita->telefono; ?></span></p>
+                    <p>Barbero: <span><?php echo $cita->barbero; ?></span></p>
                     
                     <!-- <p>ID: <span><?php echo $cita->id; ?></span></p>
                     <p>Hora: <span><?php echo $cita->hora; ?></span></p>
@@ -3072,37 +3355,14 @@ APP_URL=http://localhost:3000
 ?>
 </file>
 
-<file path="views/layout.php">
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>App Salón</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;700;900&display=swap" rel="stylesheet"> 
-    <link rel="stylesheet" href="/build/css/app.css">
-</head>
-<body>
-    <div class="contenedor-app">
-        <div class="imagen"></div>
-        <div class="app">
-            <?php echo $contenido; ?>
-        </div>
-    </div>
-
-    <?php echo $script ?? ''; ?>
-</body>
-</html>
-</file>
-
 <file path=".gitignore">
-# /vendor
-# /node_modules
-# includes/.env
-# /public/build
-# .DS_Store
-# Thumbs.db
-# *.log
+/vendor
+/node_modules
+includes/.env
+/public/build
+.DS_Store
+Thumbs.db
+*.log
 </file>
 
 </files>

@@ -1,20 +1,54 @@
 @use 'base/variables' as v;
 
+.invalidar-cita {
+    background-color: rgba(203, 0, 0, 0.15);
+    border-left: 4px solid v.$rojo;
+    color: v.$rojo;
+    padding: 2rem;
+    font-weight: v.$bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 0.5rem;
+}
+
 .contenido-resumen {
     p {
         margin-bottom: 1rem;
+        color: v.$gris_claro;
+        padding: 1rem 0;
+        border-bottom: 1px solid v.$gris_oscuro;
     }
 
     span {
-        color: v.$azul;
+        color: v.$dorado;
         font-weight: v.$bold;
-        font-size: 2.4rem;
+        margin-right: 1rem;
+    }
+    
+    h3 {
+        color: v.$dorado;
+        font-size: 1.8rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin: 2rem 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid v.$gris_oscuro;
+    }
+
+    .boton {
+        margin-top: 3rem;
+        width: 100%;
+        text-align: center;
     }
 }
 
 .contenedor-servicio {
-    padding: 3rem 0;
-    border-bottom: 1px solid v.$gris;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid v.$gris_oscuro;
+
+    p {
+        margin: 0.3rem 0;
+    }
 
     &:last-of-type {
         margin-bottom: v.$separacion;

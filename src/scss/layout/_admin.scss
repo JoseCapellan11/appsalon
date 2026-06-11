@@ -1,22 +1,69 @@
 @use 'base/variables' as v;
 
+.no-citas {
+    text-align: center;
+    font-weight: v.$bold;
+    font-size: 2.4rem;
+    text-transform: uppercase;
+    color: v.$gris;
+    padding: 4rem 0;
+    border: 2px dashed v.$gris_oscuro;
+    border-radius: 1rem;
+}
+
 .citas {
     list-style: none;
     padding: 0;
 
     li {
-        padding: 1rem;
-        border-top: 1px solid v.$blanco;
+        background-color: v.$negro_claro;
+        border: 1px solid v.$gris_oscuro;
+        border-left: 4px solid v.$dorado;
+        border-radius: 1rem;
+        padding: 2.5rem;
+        margin-bottom: 2rem;
+        transition: border-color 300ms ease;
+
+        &:hover {
+            border-color: v.$dorado;
+        }
 
         p {
             font-weight: v.$bold;
-            color: v.$azul;
+            color: v.$dorado;
+            margin-bottom: 0.5rem;
         }
 
-        span,
-        .servicio {
+        span {
             font-weight: v.$regular;
-            color: v.$blanco;
+            color: v.$gris_claro;
+        }
+
+        h3 {
+            color: v.$dorado;
+            font-size: 1.8rem;
+            margin: 2rem 0 1rem 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .servicio {
+            color: v.$gris_claro;
+            font-weight: v.$regular;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid v.$gris_oscuro;
+        }
+
+        .total {
+            color: v.$dorado;
+            font-weight: v.$bold;
+            font-size: 1.8rem;
+            margin-top: 1rem;
+
+            span {
+                color: v.$dorado;
+                font-size: 2.2rem;
+            }
         }
     }
 }
@@ -25,11 +72,15 @@
     @extend .citas;
 
     .acciones {
-        margin: 0;
+        margin-top: 2rem;
+        display: flex;
+        gap: 1rem;
     }
 
     .boton,
     .boton-eliminar {
         margin: 0;
+        padding: 0.8rem 2rem;
+        font-size: 1.3rem;
     }
 }

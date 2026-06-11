@@ -1,3 +1,7 @@
-<h1 class="nombre-pagina">Confirmar Cuenta</h1>
+<h1 class="nombre-pagina">Cuenta <span>Creada</span></h1>
+<p class="descripcion-pagina">Tu cuenta fue creada correctamente</p>
 
-<p class="descripcion-pagina">Hemos enviado las instrucciones para confirmar tu cuenta a tu email</p>
+<div class="mensaje-exito">
+    <p>Hemos enviado un email de confirmación, revisa tu bandeja de entrada y confirma tu cuenta para poder iniciar sesión.</p>
+    <a href="/" class="boton">Iniciar Sesión</a>
+</div>

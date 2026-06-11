@@ -7,18 +7,26 @@ $tablet: 768px;
 $desktop: 1024px;
 
 // Colores
-$azul: #0da6f3;
+$dorado: #C9A84C;
+$dorado_oscuro: #a8863a;
 $rojo: #cb0000;
-$verde:#329f00;
-$negro: #1a1b15;
+$verde: #329f00;
 
+$negro: #0d0d0d;
+$negro_medio: #1a1a1a;
+$negro_claro: #252525;
+$gris_oscuro: #333333;
+$gris: #555555;
+$gris_claro: #e1e1e1;
 $blanco: #FFFFFF;
-$gris: #e1e1e1;
+
+// Alias para compatibilidad
+$azul: $dorado;
 
 $separacion: 5rem;
 
 // Fuentes
 $delgada: 300;
-$regular : 400;
+$regular: 400;
 $bold: 700;
-$black: 900
+$black: 900;

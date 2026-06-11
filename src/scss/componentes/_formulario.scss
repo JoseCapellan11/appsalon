@@ -1,9 +1,8 @@
-@use 'base/variables' as v;
-@use 'base/mixins' as m;
 @use 'sass:color';
+@use 'base/variables' as v;
 
 .formulario {
-    margin-top: 5rem;
+    margin-top: 3rem;
     width: 100%;
 }
 
@@ -13,18 +12,35 @@
     align-items: center;
 
     label {
-        flex: 0 0 10rem;
+        flex: 0 0 12rem;
+        color: v.$dorado;
+        font-weight: v.$bold;
+        font-size: 1.4rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
     }
 
     input {
         flex: 1;
         border: none;
-        padding: calc(v.$separacion / 4);
-        border-radius: 1rem;
+        border-bottom: 2px solid v.$gris_oscuro;
+        background-color: transparent;
+        padding: 1rem;
+        color: v.$blanco;
+        font-size: 1.6rem;
+        transition: border-color 300ms ease;
+        outline: none;
+
+        &:focus {
+            border-bottom-color: v.$dorado;
+        }
+
+        &::placeholder {
+            color: v.$gris;
+        }
 
         &:disabled {
-            background-color: color.adjust(v.$negro, $lightness: 30%);
-            color: v.$blanco;
+            color: v.$gris;
             cursor: not-allowed;
         }
     }

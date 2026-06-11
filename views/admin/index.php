@@ -1,5 +1,4 @@
-<h1 class="nombre-pagina">Administración</h1>
-<p class="descripcion-pagina">Panel de Administración</p>
+<h1 class="nombre-pagina">Panel de <span>Administración</span></h1>
 
 <?php include_once __DIR__ . '/../templates/barra.php'; ?>
 
@@ -18,11 +17,9 @@
     </form>
 </div>
 
-<?php
-    if(count($citas) === 0) {
-        echo "<h2>No hay citas en esta fecha</h2>";
-    }
-?>
+<?php if(count($citas) === 0) { ?>
+    <p class="no-citas">No hay citas en esta fecha</p>
+<?php } ?>
 
 <div id="citas-admin">
     <ul class="citas">
@@ -33,17 +30,12 @@
                     $idCita = $cita->id;
         ?>
                 <li>
-                    <p>Cliente: <span><?php echo $cita->cliente; ?></span></p>
-                    <p>Hora: <span><?php echo $cita->hora; ?></span></p>
-                    <p>Teléfono: <span><?php echo $cita->telefono; ?></span></p>
-                    <p>Barbero: <span><?php echo $cita->barbero; ?></span></p>
-                    
-                    <!-- <p>ID: <span><?php echo $cita->id; ?></span></p>
+                    <p>ID: <span><?php echo $cita->id; ?></span></p>
                     <p>Hora: <span><?php echo $cita->hora; ?></span></p>
                     <p>Cliente: <span><?php echo $cita->cliente; ?></span></p>
                     <p>Email: <span><?php echo $cita->email; ?></span></p>
-                    <p>Teléfono: <span><?php echo $cita->telefono; ?></span></p> -->
-
+                    <p>Teléfono: <span><?php echo $cita->telefono; ?></span></p>
+                    <p>Barbero: <span><?php echo $cita->barbero; ?></span></p>
                     <h3>Servicios</h3>
         <?php } ?>
 
@@ -55,18 +47,17 @@
 
                 if($actual !== $proximo) { ?>
                     <p class="total">Total: <span>$<?php echo calcularTotal($citas, $actual); ?></span></p>
-                    
+
                     <form action="/api/eliminar" method="POST">
                         <input type="hidden" name="id" value="<?php echo $cita->id; ?>">
-                        <input type="submit" class="boton-eliminar" value="Eliminar">
+                        <input type="submit" class="boton-eliminar" value="Eliminar Cita">
                     </form>
                 </li>
         <?php } ?>
-
-        <?php } // Fin del foreach ?>
+        <?php } ?>
     </ul>
 </div>
 
 <?php 
-    $script = "<script src='build/js/buscador.js'></script>";
+    $script = "<script src='/build/js/buscador.js'></script>";
 ?>

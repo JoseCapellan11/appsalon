@@ -1,12 +1,12 @@
-<h1 class="nombre-pagina">Login</h1>
-<p class="descripcion-pagina">Inicia sesión para acceder a tu cuenta</p>
+<h1 class="nombre-pagina">Iniciar <span>Sesión</span></h1>
+<p class="descripcion-pagina">Ingresa tus credenciales para continuar</p>
 
-<?php include_once __DIR__ . "/../templates/alertas.php"; ?>
+<?php include_once __DIR__ . '/../templates/alertas.php'; ?>
 
 <form class="formulario" method="POST" action="/">
     <div class="campo">
         <label for="email">Email</label>
-        <input
+        <input 
             type="email"
             id="email"
             placeholder="Tu Email"
@@ -16,7 +16,7 @@
 
     <div class="campo">
         <label for="password">Password</label>
-            <input
+        <input 
             type="password"
             id="password"
             placeholder="Tu Password"
@@ -24,10 +24,10 @@
         />
     </div>
 
-    <input type="submit" class="boton" value="Iniciar Sesión">
+    <input type="submit" value="Iniciar Sesión" class="boton">
 </form>
 
-<div class="acciones">
-    <a href="/crear-cuenta">¿Aún no tienes una cuenta? Crear una</a>
+<div class="acciones-auth">
+    <a href="/crear-cuenta">¿Aún no tienes una cuenta? Regístrate</a>
     <a href="/olvide">¿Olvidaste tu password?</a>
 </div>

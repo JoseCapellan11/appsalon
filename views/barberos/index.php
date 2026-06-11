@@ -1,5 +1,5 @@
-<h1 class="nombre-pagina">Barberos</h1>
-<p class="descripcion-pagina">Administración de Barberos</p>
+<h1 class="nombre-pagina">Gestión de <span>Barberos</span></h1>
+<p class="descripcion-pagina">Administra los barberos de la barbería</p>
 
 <?php include_once __DIR__ . '/../templates/barra.php'; ?>
 
@@ -14,7 +14,6 @@
 
             <div class="acciones">
                 <a class="boton" href="/barberos/actualizar?id=<?php echo $barbero->id; ?>">Actualizar</a>
-
                 <form action="/barberos/eliminar" method="POST">
                     <input type="hidden" name="id" value="<?php echo $barbero->id; ?>">
                     <input type="submit" value="Eliminar" class="boton-eliminar">

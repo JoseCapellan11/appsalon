@@ -42,30 +42,39 @@ class ServicioController {
         ]);
     }
 
-    public static function actualizar (Router $router) {
-
+    public static function actualizar(Router $router) {
         isAdmin();
 
-        if(!is_numeric($_GET['id'])) return;
-
-        $servicio = Servicio::find($_GET['id']);
         $alertas = [];
+        $id = $_GET['id'] ?? null;
+
+        if(!$id) {
+            header('Location: /servicios');
+            exit;
+        }
+
+        $servicio = Servicio::find($id);
+
+        if(!$servicio) {
+            header('Location: /servicios');
+            exit;
+        }
 
         if($_SERVER['REQUEST_METHOD'] === 'POST') {
             $servicio->sincronizar($_POST);
-
             $alertas = $servicio->validar();
 
             if(empty($alertas)) {
                 $servicio->guardar();
-                header('location: /servicios');
+                header('Location: /servicios');
+                exit;
             }
         }
 
         $router->render('servicios/actualizar', [
             'nombre' => $_SESSION['nombre'],
-            'servicio' => $servicio,
-            'alertas' => $alertas
+            'alertas' => $alertas,
+            'servicio' => $servicio
         ]);
     }
 
