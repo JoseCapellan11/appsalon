@@ -21,3 +21,19 @@
         value="<?php echo $barbero->apellido; ?>"
     />
 </div>
+
+<div class="campo">
+    <label for="imagen">Foto</label>
+    <input 
+        type="file"
+        id="imagen"
+        name="imagen"
+        accept="image/*"
+    />
+</div>
+
+<?php if($barbero->imagen) { ?>
+    <div class="imagen-actual">
+        <img src="/build/img/barberos/<?php echo $barbero->imagen; ?>" alt="Foto del barbero">
+    </div>
+<?php } ?>

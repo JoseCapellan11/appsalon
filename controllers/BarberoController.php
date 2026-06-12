@@ -9,9 +9,7 @@ class BarberoController {
 
     public static function index(Router $router) {
         isAdmin();
-
         $barberos = Barbero::all();
-
         $router->render('barberos/index', [
             'nombre' => $_SESSION['nombre'],
             'barberos' => $barberos
@@ -27,6 +25,19 @@ class BarberoController {
         if($_SERVER['REQUEST_METHOD'] === 'POST') {
             $barbero->sincronizar($_POST);
             $alertas = $barbero->validar();
+
+            // Subir imagen
+            if(isset($_FILES['imagen']) && $_FILES['imagen']['error'] === 0) {
+                $nombreImagen = md5(uniqid(rand(), true)) . '.jpg';
+                $ruta = '../public/build/img/barberos/' . $nombreImagen;
+
+                if(!is_dir('../public/build/img/barberos')) {
+                    mkdir('../public/build/img/barberos', 0755, true);
+                }
+
+                move_uploaded_file($_FILES['imagen']['tmp_name'], $ruta);
+                $barbero->imagen = $nombreImagen;
+            }
 
             if(empty($alertas)) {
                 $barbero->guardar();
@@ -64,6 +75,27 @@ class BarberoController {
             $barbero->sincronizar($_POST);
             $alertas = $barbero->validar();
 
+            // Subir imagen
+            if(isset($_FILES['imagen']) && $_FILES['imagen']['error'] === 0) {
+                $nombreImagen = md5(uniqid(rand(), true)) . '.jpg';
+                $ruta = '../public/build/img/barberos/' . $nombreImagen;
+
+                if(!is_dir('../public/build/img/barberos')) {
+                    mkdir('../public/build/img/barberos', 0755, true);
+                }
+
+                // Eliminar imagen anterior
+                if($barbero->imagen) {
+                    $imagenAnterior = '../public/build/img/barberos/' . $barbero->imagen;
+                    if(file_exists($imagenAnterior)) {
+                        unlink($imagenAnterior);
+                    }
+                }
+
+                move_uploaded_file($_FILES['imagen']['tmp_name'], $ruta);
+                $barbero->imagen = $nombreImagen;
+            }
+
             if(empty($alertas)) {
                 $barbero->guardar();
                 header('Location: /barberos');
@@ -84,6 +116,15 @@ class BarberoController {
         if($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = $_POST['id'];
             $barbero = Barbero::find($id);
+
+            // Eliminar imagen
+            if($barbero->imagen) {
+                $imagen = '../public/build/img/barberos/' . $barbero->imagen;
+                if(file_exists($imagen)) {
+                    unlink($imagen);
+                }
+            }
+
             $barbero->eliminar();
             header('Location: /barberos');
             exit;

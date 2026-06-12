@@ -3,7 +3,7 @@
 
 <?php include_once __DIR__ . '/../templates/barra.php'; ?>
 
-<form class="formulario" method="POST" action="/barberos/actualizar?id=<?php echo $barbero->id; ?>">
+<form class="formulario" method="POST" action="/barberos/actualizar?id=<?php echo $barbero->id; ?>" enctype="multipart/form-data">
     <?php include_once __DIR__ . '/formulario.php'; ?>
 
     <input type="submit" value="Actualizar Barbero" class="boton">
