@@ -7,13 +7,13 @@
 
     h2 {
         font-size: 2.4rem;
-        color: v.$blanco;
+        color: var(--color-texto);
         margin-bottom: 0.5rem;
     }
 
     .text-center {
         text-align: center;
-        color: v.$gris;
+        color: var(--color-gris);
         margin-bottom: 3rem;
     }
 

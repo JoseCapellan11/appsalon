@@ -14,9 +14,23 @@ class APIController {
 
     public static function guardar() {
         $cita = new Cita($_POST);
-        $resultado = $cita->guardar();
 
-        $id = $resultado['id']; // ← verificar que esto tenga valor
+        $citaExistente = Cita::whereMultiple(
+            'barberoId = ' . intval($_POST['barberoId']) . 
+            ' AND fecha = "' . $_POST['fecha'] . 
+            '" AND hora = "' . $_POST['hora'] . '"'
+        );
+
+        if($citaExistente) {
+            echo json_encode([
+                'resultado' => false,
+                'mensaje' => 'El barbero ya tiene una cita en esa fecha y hora'
+            ]);
+            return;
+        }
+
+        $resultado = $cita->guardar();
+        $id = $resultado['id'];
 
         if(!$id) {
             echo json_encode(['resultado' => false]);
@@ -24,9 +38,8 @@ class APIController {
         }
 
         $idServicios = explode(',', $_POST['servicios']);
-
         foreach($idServicios as $idServicio) {
-            $idServicio = trim($idServicio); // ← limpiar espacios
+            $idServicio = trim($idServicio);
             $args = [
                 'citaId' => $id,
                 'servicioId' => $idServicio

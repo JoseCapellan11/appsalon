@@ -9,9 +9,9 @@
     left: 0;
     right: 0;
     z-index: 100;
-    background-color: rgba(13, 13, 13, 0.95);
+    background-color: var(--bg-secondary);
     backdrop-filter: blur(10px);
-    border-bottom: 1px solid v.$gris_oscuro;
+    border-bottom: 1px solid var(--color-borde);
     padding: 1.5rem 0;
 
     &__contenedor {
@@ -26,12 +26,12 @@
     &__logo {
         font-size: 2.4rem;
         font-weight: v.$black;
-        color: v.$blanco;
+        color: var(--color-texto);
         text-transform: uppercase;
         letter-spacing: 2px;
 
         span {
-            color: v.$dorado;
+            color: var(--dorado);
         }
     }
 
@@ -41,7 +41,7 @@
         gap: 3rem;
 
         a {
-            color: v.$gris_claro;
+            color: var(--color-texto-secundario);
             font-size: 1.4rem;
             font-weight: v.$bold;
             text-transform: uppercase;
@@ -49,19 +49,19 @@
             transition: color 300ms ease;
 
             &:hover {
-                color: v.$dorado;
+                color: var(--dorado);
             }
         }
     }
 
     &__cta {
-        background-color: v.$dorado !important;
+        background-color: var(--dorado) !important;
         color: v.$negro !important;
-        padding: 0.8rem 2rem;
+        padding: 0.8rem 2rem !important;
         border-radius: 0.5rem;
 
         &:hover {
-            background-color: v.$dorado_oscuro !important;
+            opacity: 0.9;
             color: v.$negro !important;
         }
     }
@@ -90,6 +90,7 @@
             letter-spacing: 3px;
             line-height: 1.1;
             margin-bottom: 2rem;
+            color: v.$blanco;
 
             span {
                 color: v.$dorado;
@@ -111,10 +112,10 @@
 // SECCIONES
 .landing-seccion {
     padding: 10rem 0;
-    background-color: v.$negro;
+    background-color: var(--bg-primary);
 
     &--oscura {
-        background-color: v.$negro_medio;
+        background-color: var(--bg-secondary);
     }
 }
 
@@ -131,20 +132,21 @@
     letter-spacing: 2px;
     text-align: center;
     margin-bottom: 1rem;
+    color: var(--color-texto);
 
     span {
-        color: v.$dorado;
+        color: var(--dorado);
     }
 }
 
 .landing-subtitulo {
     text-align: center;
-    color: v.$gris;
+    color: var(--color-gris);
     font-size: 1.8rem;
     margin-bottom: 6rem;
 }
 
-// GRID DE CARDS
+// GRID
 .landing-grid {
     display: grid;
     gap: 3rem;
@@ -160,9 +162,9 @@
 
 // CARDS
 .landing-card {
-    background-color: v.$negro_claro;
-    border: 1px solid v.$gris_oscuro;
-    border-top: 3px solid v.$dorado;
+    background-color: var(--bg-card);
+    border: 1px solid var(--color-borde);
+    border-top: 3px solid var(--dorado);
     border-radius: 1rem;
     padding: 3rem;
     text-align: center;
@@ -174,21 +176,21 @@
     }
 
     h3 {
-        color: v.$blanco;
+        color: var(--color-texto);
         font-size: 2rem;
         margin-bottom: 1rem;
         margin-top: 0;
     }
 
     p {
-        color: v.$gris_claro;
+        color: var(--color-texto-secundario);
         margin-bottom: 2rem;
     }
 
     &__precio {
         font-size: 3.5rem;
         font-weight: v.$black;
-        color: v.$dorado !important;
+        color: var(--dorado) !important;
         margin-bottom: 2rem !important;
     }
 
@@ -196,7 +198,7 @@
         width: 8rem;
         height: 8rem;
         border-radius: 50%;
-        background-color: v.$dorado;
+        background-color: var(--dorado);
         color: v.$negro;
         font-size: 3rem;
         font-weight: v.$black;
@@ -222,7 +224,7 @@
 
     &__texto {
         p {
-            color: v.$gris_claro;
+            color: var(--color-texto-secundario);
             font-size: 1.8rem;
             line-height: 1.8;
             margin-bottom: 2rem;
@@ -235,7 +237,7 @@
         background-size: cover;
         background-position: center;
         border-radius: 1rem;
-        border: 3px solid v.$dorado;
+        border: 3px solid var(--dorado);
     }
 }
 
@@ -249,22 +251,22 @@
     }
 
     &__item {
-        background-color: v.$negro_claro;
-        border: 1px solid v.$gris_oscuro;
-        border-top: 3px solid v.$dorado;
+        background-color: var(--bg-card);
+        border: 1px solid var(--color-borde);
+        border-top: 3px solid var(--dorado);
         border-radius: 1rem;
         padding: 3rem;
         text-align: center;
 
         h3 {
-            color: v.$dorado;
+            color: var(--dorado);
             font-size: 1.8rem;
             margin-top: 0;
             margin-bottom: 1.5rem;
         }
 
         p {
-            color: v.$gris_claro;
+            color: var(--color-texto-secundario);
             font-size: 1.6rem;
             margin-bottom: 0.5rem;
         }
@@ -273,8 +275,8 @@
 
 // FOOTER
 .footer {
-    background-color: v.$negro_medio;
-    border-top: 1px solid v.$gris_oscuro;
+    background-color: var(--bg-secondary);
+    border-top: 1px solid var(--color-borde);
     padding: 3rem 0;
 
     .landing-contenedor {
@@ -286,25 +288,25 @@
     }
 
     p {
-        color: v.$gris;
+        color: var(--color-gris);
         font-size: 1.4rem;
         margin: 0;
     }
 
     &__link {
-        color: v.$dorado;
+        color: var(--dorado);
         font-size: 1.4rem;
         font-weight: v.$bold;
         text-transform: uppercase;
         letter-spacing: 1px;
 
         &:hover {
-            color: v.$dorado_oscuro;
+            opacity: 0.8;
         }
     }
 }
 
-// Body landing sin padding
+// Body landing
 body.landing {
     padding: 0;
     margin: 0;

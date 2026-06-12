@@ -7,6 +7,7 @@
             <a href="#barberos">Barberos</a>
             <a href="#nosotros">Nosotros</a>
             <a href="#contacto">Contacto</a>
+            <button id="btn-tema" class="btn-tema" title="Cambiar tema">☀️</button>
             <a href="/login" class="navbar__cta">Mi Cuenta</a>
         </nav>
     </div>
@@ -75,7 +76,7 @@
 <!-- CONTACTO -->
 <section class="landing-seccion landing-seccion--oscura" id="contacto">
     <div class="landing-contenedor">
-        <h2 class="landing-titulo">Cont<span>áctanos</span></h2>
+        <h2 class="landing-titulo">Contáctanos</h2>
         <p class="landing-subtitulo">Estamos aquí para atenderte</p>
 
         <div class="landing-contacto">

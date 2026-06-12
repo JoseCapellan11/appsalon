@@ -341,6 +341,13 @@ async function reservarCita() {
             }).then(() => {
                 window.location.reload();
             });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Cita no disponible',
+                text: resultado.mensaje || 'Hubo un error al crear la cita',
+                confirmButtonText: 'Ok'
+            });
         }
     } catch (error) {
         Swal.fire({

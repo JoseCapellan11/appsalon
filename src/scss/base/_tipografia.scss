@@ -5,18 +5,18 @@
     font-weight: v.$black;
     text-transform: uppercase;
     letter-spacing: 2px;
-    color: v.$blanco;
+    color: var(--color-texto);
     text-align: center;
     margin-bottom: 0.5rem;
 
     span {
-        color: v.$dorado;
+        color: var(--dorado);
     }
 }
 
 .descripcion-pagina {
     text-align: center;
-    color: v.$gris;
+    color: var(--color-gris);
     font-size: 1.6rem;
     margin-bottom: v.$separacion;
 }

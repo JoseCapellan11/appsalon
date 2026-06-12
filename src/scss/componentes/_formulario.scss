@@ -13,7 +13,7 @@
 
     label {
         flex: 0 0 12rem;
-        color: v.$dorado;
+        color: var(--dorado);
         font-weight: v.$bold;
         font-size: 1.4rem;
         text-transform: uppercase;
@@ -23,24 +23,24 @@
     input {
         flex: 1;
         border: none;
-        border-bottom: 2px solid v.$gris_oscuro;
+        border-bottom: 2px solid var(--color-borde);
         background-color: transparent;
         padding: 1rem;
-        color: v.$blanco;
+        color: var(--color-texto);
         font-size: 1.6rem;
         transition: border-color 300ms ease;
         outline: none;
 
         &:focus {
-            border-bottom-color: v.$dorado;
+            border-bottom-color: var(--dorado);
         }
 
         &::placeholder {
-            color: v.$gris;
+            color: var(--color-gris);
         }
 
         &:disabled {
-            color: v.$gris;
+            color: var(--color-gris);
             cursor: not-allowed;
         }
     }

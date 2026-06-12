@@ -1,6 +1,9 @@
 <div class="barra">
     <p>Hola: <span><?php echo $nombre; ?></span></p>
-    <a class="boton" href="/logout">Cerrar Sesión</a>
+    <div class="barra__acciones">
+        <button id="btn-tema" class="btn-tema" title="Cambiar tema">☀️</button>
+        <a class="boton" href="/logout">Cerrar Sesión</a>
+    </div>
 </div>
 
 <?php if(isset($_SESSION['admin'])) { ?>

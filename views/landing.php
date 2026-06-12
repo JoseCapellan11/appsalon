@@ -11,6 +11,7 @@
 </head>
 <body class="landing">
     <?php echo $contenido; ?>
+    <script src="/build/js/tema.js"></script>
     <?php echo $script ?? ''; ?>
 </body>
 </html>

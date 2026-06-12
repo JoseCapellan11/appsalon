@@ -1,5 +1,40 @@
 @use 'variables' as v;
 
+:root {
+    --bg-primary: #0d0d0d;
+    --bg-secondary: #1a1a1a;
+    --bg-card: #252525;
+    --color-texto: #ffffff;
+    --color-texto-secundario: #e1e1e1;
+    --color-gris: #555555;
+    --color-borde: #333333;
+    --dorado: #C9A84C;
+}
+
+[data-tema="claro"] {
+    --bg-primary: #f5f5f5;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    --color-texto: #0d0d0d;
+    --color-texto-secundario: #333333;
+    --color-gris: #666666;
+    --color-borde: #dddddd;
+    --dorado: #a8863a;
+}
+
+@media (prefers-color-scheme: light) {
+    :root:not([data-tema="oscuro"]) {
+        --bg-primary: #f5f5f5;
+        --bg-secondary: #ffffff;
+        --bg-card: #ffffff;
+        --color-texto: #0d0d0d;
+        --color-texto-secundario: #333333;
+        --color-gris: #666666;
+        --color-borde: #dddddd;
+        --dorado: #a8863a;
+    }
+}
+
 html {
     font-size: 62.5%;
     box-sizing: border-box;
@@ -12,37 +47,30 @@ html {
 body {
     font-family: v.$fuente_principal;
     font-size: 1.6rem;
-    background-color: v.$negro;
-    color: v.$blanco;
+    background-color: var(--bg-primary);
+    color: var(--color-texto);
+    transition: background-color 300ms ease, color 300ms ease;
 }
 
 p {
     font-size: 1.6rem;
-    color: v.$gris_claro;
+    color: var(--color-texto-secundario);
 }
 
-h1, h2, h3 {
+h1, h2 {
     font-weight: v.$black;
-    color: v.$blanco;
-}
-
-h1 {
-    font-size: 3.8rem;
-}
-
-h2 {
-    font-size: 2.8rem;
+    color: var(--color-texto);
 }
 
 h3 {
     font-size: 2.2rem;
     margin: 2rem 0;
-    color: v.$dorado;
+    color: var(--dorado);
 }
 
 a {
     text-decoration: none;
-    color: v.$dorado;
+    color: var(--dorado);
 
     &:hover {
         color: v.$dorado_oscuro;
@@ -52,7 +80,6 @@ a {
 img {
     max-width: 100%;
 }
-
 
 input[type="date"],
 input[type="time"] {
@@ -64,10 +91,10 @@ input[type="time"] {
 }
 
 ::-webkit-scrollbar-track {
-    background: v.$negro_medio;
+    background: var(--bg-secondary);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: v.$dorado;
+    background: var(--dorado);
     border-radius: 3px;
 }
