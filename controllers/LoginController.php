@@ -122,7 +122,7 @@ class LoginController {
                 $resultado = $usuario->guardar();
 
                 if($resultado) {
-                    header('Location: /');
+                    header('Location: /login');
                     exit;
                 }
             }

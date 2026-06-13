@@ -21,14 +21,14 @@ function esUltimo($actual, $proximo) : bool {
 
 function isAuth() : void {
     if(!isset($_SESSION['login'])) {
-        header('Location: /');
+        header('Location: /login');
         exit;
     }
 }
 
 function isAdmin() : void {
     if(!isset($_SESSION['admin'])) {
-        header('Location: /');
+        header('Location: /login');
         exit;
     }
 }
